@@ -1,8 +1,14 @@
-:- use_module(library(readutil)).
+:- dynamic title/9.
+:- dynamic aka/8.
+:- dynamic rating/3.
+:- dynamic crew/3.
+:- dynamic principals/6.
+:- dynamic names/6.
+:- dynamic episode/4.
 
 % 🚀 Inicia a importação dos 7 ficheiros TSV
 import_all :-
-    import_titles,  % Importa title.basics.tsv (done)
+    import_titles,  % Importa title.basics.tsv 
     import_akas,    % Importa title.akas.tsv
     import_ratings, % Importa title.ratings.tsv
     import_crew,    % Importa title.crew.tsv
@@ -12,19 +18,26 @@ import_all :-
 
 % 🟢 IMPORTA title.basics.tsv (título, ano, género)
 import_titles :-
-    open('IMDb_datasets/title.basics.tsv', read, S),
-    process_titles(S),
-    close(S).
+    (   open('/Users/ritamoreira/Desktop/CC/GitHub/Recommendation_System/src/IMDb_datasets/title.basics.tsv', read, S)
+    ->  read_line_to_string(S, _),  % Ignora a primeira linha (cabeçalho)
+        process_titles(S),
+        close(S)
+    ;   write('Failed to open file'), nl, fail
+    ).
 
 process_titles(S) :-
     read_line_to_codes(S, Line),
     (   Line == end_of_file -> ! 
-    ;   parse_title(Line, MovieID, Type, PrimaryTitle, OriginalTitle, isAdult,  startYear, endYear, runtimeMinutes,  Genre),
-        assertz(title(MovieID, Type, PrimaryTitle, OriginalTitle, isAdult,  startYear, endYear, runtimeMinutes,  Genre)), % 🔹 Armazena na base de dados
+    ;   (   Line \= []  % Avoid processing empty lines
+        ->  parse_title(Line, MovieID, Type, PrimaryTitle, OriginalTitle, isAdult, startYear, endYear, runtimeMinutes, Genre),
+            assertz(title(MovieID, Type, PrimaryTitle, OriginalTitle, isAdult, startYear, endYear, runtimeMinutes, Genre)),
+            write('Processed title: '), write(PrimaryTitle), nl  % Debugging output
+        ;   write('Skipping empty line'), nl
+        ),
         process_titles(S)
     ).
 
-parse_title(Line, MovieID, Type, PrimaryTitle, OriginalTitle, isAdult,  startYear, endYear, runtimeMinutes,  Genre) :-
+parse_title(Line, MovieID, Type, PrimaryTitle, OriginalTitle, isAdult, startYear, endYear, runtimeMinutes, Genre) :-
     get_field1(Line, F0, Rem1), atom_codes(MovieID, F0),
     get_field1(Rem1, F1, Rem2), atom_codes(Type, F1),
     get_field1(Rem2, F2, Rem3), atom_codes(PrimaryTitle, F2),
@@ -37,7 +50,7 @@ parse_title(Line, MovieID, Type, PrimaryTitle, OriginalTitle, isAdult,  startYea
 
 % 🟢 IMPORTA title.akas.tsv (aka nomes alternativos)
 import_akas :-
-    open('IMDb_datasets/title.akas.tsv', read, S),
+    open('/Users/ritamoreira/Desktop/CC/GitHub/Recommendation_System/src/IMDb_datasets/title.akas.tsv', read, S),
     process_akas(S),
     close(S).
 
@@ -45,7 +58,7 @@ process_akas(S) :-
     read_line_to_codes(S, Line),
     (   Line == end_of_file -> ! 
     ;   parse_aka(Line, MovieID, Ordering, Title, Region, Language, Types, Attributes, isOriginalTitle),
-        assertz(aka(MovieID, Ordering, Title, Region, Language, Types, Attributes, isOriginalTitle)), % 🔹 Armazena na base de dados
+        assertz(aka(MovieID, Ordering, Title, Region, Language, Types, Attributes, isOriginalTitle)),
         process_akas(S)
     ).
 
@@ -61,7 +74,7 @@ parse_aka(Line, MovieID, Ordering, Title, Region, Language, Types, Attributes, i
 
 % 🟢 IMPORTA title.ratings.tsv (avaliação IMDb)
 import_ratings :-
-    open('IMDb_datasets/title.ratings.tsv', read, S),
+    open('/Users/ritamoreira/Desktop/CC/GitHub/Recommendation_System/src/IMDb_datasets/title.ratings.tsv', read, S),
     process_ratings(S),
     close(S).
 
@@ -69,7 +82,7 @@ process_ratings(S) :-
     read_line_to_codes(S, Line),
     (   Line == end_of_file -> ! 
     ;   parse_rating(Line, MovieID, averageRating, numVotes),
-        assertz(rating(MovieID, averageRating, numVotes)), % 🔹 Armazena na base de dados
+        assertz(rating(MovieID, averageRating, numVotes)),
         process_ratings(S)
     ).
 
@@ -80,7 +93,7 @@ parse_rating(Line, MovieID, averageRating, numVotes) :-
 
 % 🟢 IMPORTA outros ficheiros (crew, principals, names, episode) (seguir mesma lógica)
 import_crew :- 
-    open('IMDb_datasets/title.crew.tsv', read, S),
+    open('/Users/ritamoreira/Desktop/CC/GitHub/Recommendation_System/src/IMDb_datasets/title.crew.tsv', read, S),
     process_crew(S),
     close(S).
 
@@ -98,7 +111,7 @@ parse_crew(Line, MovieID, Directors, Writers) :-
     get_field1(Rem2, F2, _), atom_codes(Writers, F2).
 
 import_principals :- 
-    open('IMDb_datasets/title.principals.tsv', read, S),
+    open('/Users/ritamoreira/Desktop/CC/GitHub/Recommendation_System/src/IMDb_datasets/title.principals.tsv', read, S),
     process_principals(S),
     close(S).
 
@@ -119,7 +132,7 @@ parse_principals(Line, MovieID, Ordering, NomineeID, Category, Job, Characters) 
     get_field1(Rem5, F5, _), atom_codes(Characters, F5).
 
 import_names :- 
-    open('IMDb_datasets/name.basics.tsv', read, S),
+    open('/Users/ritamoreira/Desktop/CC/GitHub/Recommendation_System/src/IMDb_datasets/name.basics.tsv', read, S),
     process_names(S),
     close(S).
 
@@ -130,6 +143,7 @@ process_names(S) :-
         assertz(names(NomineeID, primaryName, birthYear, deathYear, primaryProfession, knownForTitles)),
         process_names(S)
     ).
+
 parse_names(Line, NomineeID, primaryName, birthYear, deathYear, primaryProfession, knownForTitles):-
     get_field1(Line, F0, Rem1), atom_codes(NomineeID, F0),
     get_field1(Rem1, F1, Rem2), atom_codes(primaryName, F1),
@@ -139,7 +153,7 @@ parse_names(Line, NomineeID, primaryName, birthYear, deathYear, primaryProfessio
     get_field1(Rem5, F5, _), atom_codes(knownForTitles, F5).
 
 import_episode :- 
-    open('IMDb_datasets/title.episode.tsv', read, S),
+    open('/Users/ritamoreira/Desktop/CC/GitHub/Recommendation_System/src/IMDb_datasets/title.episode.tsv', read, S),
     process_episode(S),
     close(S).
 
@@ -159,8 +173,8 @@ parse_episode(Line, MovieID, ParentID, SeasonNumber, EpisodeNumber) :-
 
 % 📌 UNIR DADOS PARA CONSULTAS
 movie_details(MovieID, Title, startYear, Genre, PrimaryTitle, averageRating) :-
-    title(MovieID, "movie", PrimaryTitle, _, _,  startYear, _, _, Genre),
-    aka(MovieID, _,  Title, _ , _ , _, _, _),
+    title(MovieID, "movie", PrimaryTitle, _, _, startYear, _, _, Genre),
+    aka(MovieID, _, Title, _ , _ , _, _, _),
     rating(MovieID, averageRating, _).
 
 movies_by_genre(Genre, Movies) :-
