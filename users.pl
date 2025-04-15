@@ -8,12 +8,19 @@
 
 :- nb_setval(current_user, none).
 
-new_user(Name, Password) :-
-    \+ db2(_, userName, Name) ->
-        assert_db2(Name, userName, Name),
+new_user(User, Pass) :-
+    new_user(User, Pass, Message),
+    writeln(Message).
+
+new_user(Name, Password, Message) :-
+    (   \+ db2(_, userName, Name)
+    ->  assert_db2(Name, userName, Name),
         assert_db2(Name, password, Password),
-        writeln('New User added');
-        writeln('Username already exists.').
+        nb_setval(current_user, Name),
+        Message = 'New User added and logged in'
+    ;   Message = 'Username already exists.'
+    ).
+
 
 delete_user(Name) :-
     db2(ID, userName, Name),

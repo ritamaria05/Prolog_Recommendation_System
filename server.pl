@@ -68,14 +68,20 @@ register_submit(Request) :-
                     [ name(Name, []),
                       password(Pass, [])
                     ]),
-    new_user(Name, Pass),
+    new_user(Name, Pass, Message),
+    ( Message == 'New User added and logged in'
+    -> http_session_retractall(user(_)),
+       http_session_assert(user(Name))
+    ; true
+    ),
     reply_html_page(
         title('Registration Result'),
         [ \current_user_info,
           h1('Registration'),
-          p('Registration attempted – check your Prolog console for messages.'),
+          p(Message),
           p(a([href('/')], 'Return Home'))
         ]).
+
 
 %% Login Page: presents a login form.
 login_page(_Request) :-
@@ -140,7 +146,7 @@ add_film_page(_Request) :-
 
 %% Add Film Handler: calls add_film/1 with the provided film ID.
 add_film_submit(Request) :-
-    ( http_session_data(user(UserID)) -> true ; UserID = none )
+    ( http_session_data(user(UserID)) -> true ; UserID = none ),
     http_parameters(Request,
                     [ film_id(FilmID, [])
                     ]),
@@ -164,20 +170,25 @@ show_films_page(_Request) :-
                 ),
                 Films)
     ),
+    films_html(Films, FilmHtml),  % <-- Create the HTML chunk here
     reply_html_page(
         title('Your Films'),
         [ \current_user_info,
           h1('Your Film List'),
-          \list_films(Films),
+          FilmHtml,
           p(a([href('/')], 'Return Home'))
         ]).
 
-%% DCG helper to output a list of films.
-list_films([]) -->
-    html(p('No films added.')).
-list_films([H|T]) -->
+%% New helper that returns a chunk of HTML based on the list
+films_html([], p('No films added.')).
+films_html(Films, \list_film_elements(Films)).
+
+%% Helper to render list items
+list_film_elements([]) --> [].
+list_film_elements([H|T]) -->
     html(p(H)),
-    list_films(T).
+    list_film_elements(T).
+
 
 /*
 To run the server, load this file into SWI-Prolog and run:
