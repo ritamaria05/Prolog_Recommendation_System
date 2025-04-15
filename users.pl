@@ -20,13 +20,20 @@ delete_user(Name) :-
     retractall_db2(ID, _, _),
     writeln('User deleted.').
 
-login(Name, Password) :- 
-    \+ db2(Name, _, _) ->
-        writeln('User not found');
-    \+ db2(Name, password, Password) ->
-        writeln('Wrong Password');
-    nb_setval(current_user, Name),
-    write('Login Sucessful').
+% Updated login predicate that returns a result message.
+login(User, Pass) :-
+    login(User, Pass, Message),
+    writeln(Message).
+    
+login(Name, Password, Message) :- 
+    (   \+ db2(Name, _, _) 
+    ->  Message = 'User not found'
+    ;   \+ db2(Name, password, Password)
+    ->  Message = 'Wrong Password'
+    ;   nb_setval(current_user, Name),
+        Message = 'Login Successful'
+    ).
+
 
 logout :-
     nb_setval(current_user, none).
