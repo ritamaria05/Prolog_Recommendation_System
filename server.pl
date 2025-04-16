@@ -5,6 +5,11 @@
 :- use_module(library(http/http_parameters)).
 :- use_module(library(http/html_write)).
 :- ensure_loaded('users.pl').  % Loads your user management and movie code
+:- use_module(library(http/http_files)). % allows to serve static files like CSS
+:- http_handler(root(static), serve_files, [prefix]). % root handler for statics
+
+serve_files(Request) :-
+    http_reply_from_files('static', [], Request). % for css file in static folder
 
 % HTTP Handlers for various endpoints
 :- http_handler(root(.), home_page, []).
@@ -32,7 +37,7 @@ current_user_info -->
         ;   Display = "Not logged in"
         )
     },
-    html(div([style('background-color: #EFEFEF; padding: 5px; margin-bottom: 10px;')],
+    html(div([style('background-color: #ffffff; padding: 5px; margin-bottom: 10px; border-radius: 12px;')],
              [ p(Display) ])).
 
 
@@ -40,15 +45,19 @@ current_user_info -->
 %% Home page with navigation links and current user info.
 home_page(_Request) :-
     reply_html_page(
-        title('Movie App Home'),
+        [ title('Movie App Home'),
+          link([rel(stylesheet), type('text/css'), href('/static/style.css')], [])
+        ],
         [ \current_user_info,
-          h1('Welcome to the Movie App'),
-          p(a([href('/register')], 'Register')),
-          p(a([href('/login')], 'Login')),
-          p(a([href('/addfilm')], 'Add Film')),
-          p(a([href('/removefilm')], 'Remove Film')),
-          p(a([href('/showfilms')], 'Show Your Films')),
-          p(a([href('/logout')], 'Logout'))
+          div([class(center_box)], [
+              h1('Welcome to Movie Recommender'),
+              p([class(menu_item)], a([href('/register')], 'Register')),
+              p([class(menu_item)], a([href('/login')], 'Login')),
+              p([class(menu_item)], a([href('/addfilm')], 'Add Film')),
+              p([class(menu_item)], a([href('/removefilm')], 'Remove Film')),
+              p([class(menu_item)], a([href('/showfilms')], 'Show Your Films')),
+              p([class(menu_item)], a([href('/logout')], 'Logout'))
+          ])
         ]).
 
 %% Registration Page: displays a form for new user registration.
