@@ -9,7 +9,7 @@
 :- http_handler(root(static), serve_files, [prefix]). % root handler for statics
 
 serve_files(Request) :-
-    http_reply_from_files('static', [], Request). % for css file in static folder
+    http_reply_from_files('./static', [], Request). % for css file in static folder
 
 % HTTP Handlers for various endpoints
 :- http_handler(root(.), home_page, []).
