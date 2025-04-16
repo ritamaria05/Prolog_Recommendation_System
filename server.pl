@@ -24,6 +24,24 @@ serve_files(Request) :-
 :- http_handler(root(removefilm), remove_film_page, []).
 :- http_handler(root(removefilm_submit), remove_film_submit, []).
 
+%%-----------------------------------------------------------------------
+%% layout: injects the stylesheet, user‐info bar, and center_box wrapper
+%%-----------------------------------------------------------------------
+:- html_meta page_wrapper(+, html).
+
+page_wrapper(Title, Body) :-
+    reply_html_page(
+        [ title(Title),
+          % link in your global stylesheet
+          link([ rel(stylesheet)
+               , type('text/css')
+               , href('/static/style.css')
+               ], [])
+        ],
+        [ \current_user_info
+        , div([class(center_box)], Body)
+        ]
+    ).
 
 %% Server launch predicate.
 server(Port) :-
@@ -45,40 +63,37 @@ current_user_info -->
 
 %% Home page with navigation links and current user info.
 home_page(_Request) :-
-    reply_html_page(
-        [ title('Movie App Home'),
-          link([rel(stylesheet), type('text/css'), href('/static/style.css')], [])
-        ],
-        [ \current_user_info,
-          div([class(center_box)], [
-              h1('Welcome to Prolog, the Movie Recommender'),
-              p('Tears were shed making this :)'),
-              div([class(menu_container)], [
-                  p([class(menu_item)], a([href('/register')], 'Register')),
-                  p([class(menu_item)], a([href('/login')], 'Login')),
-                  p([class(menu_item)], a([href('/addfilm')], 'Add Film')),
-                  p([class(menu_item)], a([href('/removefilm')], 'Remove Film')),
-                  p([class(menu_item)], a([href('/showfilms')], 'Show Your Films')),
-                  p([class(menu_item)], a([href('/logout')], 'Logout'))
-              ])
-          ])
-        ]).
+    page_wrapper('Movie App Home', [
+      h1('Welcome to Prolog, the Movie Recommender'),
+      p('Tears were shed making this :)'),
+      div([class(menu_container)], [
+          p([class(menu_item)], a([href('/register')], 'Register')),
+          p([class(menu_item)], a([href('/login')], 'Login')),
+          p([class(menu_item)], a([href('/addfilm')], 'Add Film')),
+          p([class(menu_item)], a([href('/removefilm')], 'Remove Film')),
+          p([class(menu_item)], a([href('/showfilms')], 'Show Your Films')),
+          p([class(menu_item)], a([href('/logout')], 'Logout'))
+      ])
+    ]).
+
 
 %% Registration Page: displays a form for new user registration.
 register_page(_Request) :-
-    reply_html_page(
-        title('Register'),
-        [ \current_user_info,
-          h1('Register New User'),
-          form([action('/register_submit'), method('post')],
-               [ p([], [label([for(name)], 'Username:'),
-                        input([name(name), type(text)])]),
-                 p([], [label([for(password)], 'Password:'),
-                        input([name(password), type(password)])]),
-                 p([], input([type(submit), value('Register')]))
-               ]),
-          p(a([href('/')], 'Return Home'))
-        ]).
+     page_wrapper('Register', [
+       h1('Register New User'),
+       form([ action('/register_submit'), method('post') ], [
+         p([], [
+           label([for(name)],     'Username:'),
+           input([name(name), type(text)])
+         ]),
+         p([], [
+           label([for(password)], 'Password:'),
+           input([name(password), type(password)])
+         ]),
+         p([], input([type(submit), value('Register')]))
+       ]),
+       p(a([href('/')], 'Return Home'))
+     ]).
 
 %% Registration Form Handler: extracts parameters and calls new_user/2.
 register_submit(Request) :-
@@ -92,30 +107,31 @@ register_submit(Request) :-
        http_session_assert(user(Name))
     ; true
     ),
-    reply_html_page(
-        title('Registration Result'),
-        [ \current_user_info,
-          h1('Registration'),
-          p(Message),
-          p(a([href('/')], 'Return Home'))
-        ]).
+    page_wrapper('Registration Result', [
+        h1('Registration'),
+        p(Message),
+        p(a([href('/')], 'Return Home'))
+    ]).
+
 
 
 %% Login Page: presents a login form.
 login_page(_Request) :-
-    reply_html_page(
-        title('Login'),
-        [ \current_user_info,
-          h1('User Login'),
-          form([action('/login_submit'), method('post')],
-               [ p([], [label([for(name)], 'Username:'),
-                        input([name(name), type(text)])]),
-                 p([], [label([for(password)], 'Password:'),
-                        input([name(password), type(password)])]),
-                 p([], input([type(submit), value('Login')]))
-               ]),
-          p(a([href('/')], 'Return Home'))
-        ]).
+     page_wrapper('Login', [
+       h1('User Login'),
+       form([ action('/login_submit'), method('post') ], [
+          p([], [
+            label([for(name)],     'Username:'),
+            input([name(name), type(text)])
+          ]),
+          p([], [
+            label([for(password)], 'Password:'),
+            input([name(password), type(password)])
+          ]),
+          p([], input([type(submit), value('Login')]))
+        ]),
+        p(a([href('/')], 'Return Home'))
+     ]).
 
 %% Login Handler: extracts parameters, calls login/3, and shows the result.
 login_submit(Request) :-
@@ -129,105 +145,90 @@ login_submit(Request) :-
        http_session_assert(user(Name))
     ; true
     ),
-    reply_html_page(
-        title('Login Result'),
-        [ \current_user_info,
-          h1('Login'),
-          p(Message),
-          p(a([href('/')], 'Return Home'))
-        ]).
+    page_wrapper('Login Result', [
+        h1('Login'),
+        p(Message),
+        p(a([href('/')], 'Return Home'))
+    ]).
+
 
 
 %% Logout Handler: logs out the user.
 logout_handler(_Request) :-
     http_session_retractall(user(_)),
-    reply_html_page(
-        title('Logout'),
-        [ \current_user_info,
-          h1('Logout'),
-          p('You have been logged out.'),
-          p(a([href('/')], 'Return Home'))
-        ]).
+    page_wrapper('Logout', [
+        h1('Logout'),
+        p('You have been logged out.'),
+        p(a([href('/')], 'Return Home'))
+    ]).
+
 
 
 %% Add Film Page: if a user is logged in, shows the add-film form.
 %% Otherwise, sends a JavaScript pop-up alert and redirects to the login page.
 add_film_page(_Request) :-
     (   http_session_data(user(_))
-    ->  reply_html_page(
-            title('Add Film'),
-            [ \current_user_info,
-              h1('Add a Film to Your List'),
-              form([action('/addfilm_submit'), method('post')],
-                   [ p([], [label([for(film_id)], 'Film ID (e.g., tt0004972):'),
-                            input([name(film_id), type(text)])]),
-                     p([], input([type(submit), value('Add Film')]))
-                   ])
-            ]
-        )
+    ->  page_wrapper('Add Film', [
+            h1('Add a Film to Your List'),
+            form([action('/addfilm_submit'), method('post')],
+                 [ p([], [label([for(film_id)], 'Film ID (e.g., tt0004972):'),
+                          input([name(film_id), type(text)])]),
+                   p([], input([type(submit), value('Add Film')]))
+                 ])
+        ])
     ;   reply_html_page(
             title('Add Film - Login Required'),
             [ \current_user_info,
-              % JavaScript: pop-up alert then redirect to the login page.
               script([], 'alert("Please login first"); window.location.href = "/login";')
-            ]
-        )
+            ])
     ).
+
 
 
 %% Add Film Handler: calls add_film_msg/2 with the provided film ID.
 add_film_submit(Request) :-
-    http_parameters(Request,
-                    [ film_id(FilmID, [])
-                    ]),
+    http_parameters(Request, [ film_id(FilmID, []) ]),
     add_film_msg(FilmID, Message),
-    reply_html_page(
-        title('Add Film Result'),
-        [ \current_user_info,
-          h1('Add Film'),
-          p(Message),
-          p(a([href('/')], 'Return Home')),
-          p(a([href('/showfilms')], 'See My Films'))
-        ]).
+    page_wrapper('Add Film Result', [
+        h1('Add Film'),
+        p(Message),
+        p(a([href('/')], 'Return Home')),
+        p(a([href('/showfilms')], 'See My Films'))
+    ]).
+
 
 %% Remove Film Page: If a user is logged in, displays a form to remove a film.
 %% Otherwise, sends a JavaScript alert and redirects to login.
 remove_film_page(_Request) :-
     (   http_session_data(user(_))
-    ->  reply_html_page(
-            title('Remove Film'),
-            [ \current_user_info,
-              h1('Remove Film from Your List'),
-              form([action('/removefilm_submit'), method('post')],
-                   [ p([], [label([for(film_id)], 'Film ID (e.g., tt0004972):'),
-                            input([name(film_id), type(text)])]),
-                     p([], input([type(submit), value('Remove Film')]))
-                   ]),
-              p(a([href('/')], 'Return Home'))
-            ]
-        )
+    ->  page_wrapper('Remove Film', [
+            h1('Remove Film from Your List'),
+            form([action('/removefilm_submit'), method('post')],
+                 [ p([], [label([for(film_id)], 'Film ID (e.g., tt0004972):'),
+                          input([name(film_id), type(text)])]),
+                   p([], input([type(submit), value('Remove Film')]))
+                 ]),
+            p(a([href('/')], 'Return Home'))
+        ])
     ;   reply_html_page(
             title('Remove Film - Login Required'),
             [ \current_user_info,
               script([], 'alert("Please login first"); window.location.href = "/login";')
-            ]
-        )
+            ])
     ).
+
 
 %% Remove Film Handler: processes film removal requests.
 remove_film_submit(Request) :-
-    http_parameters(Request,
-                    [ film_id(FilmID, [])
-                    ]),
+    http_parameters(Request, [ film_id(FilmID, []) ]),
     remove_film_msg(FilmID, Message),
-    reply_html_page(
-        title('Remove Film Result'),
-        [ \current_user_info,
-          h1('Remove Film'),
-          p(Message),
-          p(a([href('/')], 'Return Home')),
-          p(a([href('/showfilms')], 'See My Films'))
-        ]).
+    page_wrapper('Remove Film Result', [
+        h1('Remove Film'),
+        p(Message),
+        p(a([href('/')], 'Return Home')),
+        p(a([href('/showfilms')], 'See My Films'))
+    ]).
+
 
 
 %% Show Films Page: shows the list of films for the currently logged in user.
@@ -242,8 +243,7 @@ show_films_page(_Request) :-
             title('Show Films - Login Required'),
             [ \current_user_info,
               script([], 'alert("Please login first"); window.location.href = "/login";')
-            ]
-        )
+            ])
     ;   findall(FilmName,
                 ( db2(UserID, film, FilmID),
                   db(FilmID, name, FilmName)
@@ -251,15 +251,13 @@ show_films_page(_Request) :-
                 FilmsRaw),
         sort(FilmsRaw, Films),  % Remove duplicates and sort alphabetically
         films_html(Films, FilmHtml),
-        reply_html_page(
-            title('Your Films'),
-            [ \current_user_info,
-              h1('Your Film List'),
-              FilmHtml,
-              p(a([href('/')], 'Return Home'))
-            ]
-        )
+        page_wrapper('Your Films', [
+            h1('Your Film List'),
+            FilmHtml,
+            p(a([href('/')], 'Return Home'))
+        ])
     ).
+
 
 
 %% New helper that returns a chunk of HTML based on the list
