@@ -26,6 +26,17 @@ body{
     padding-left: 20px;
 }
 
+.mascote-pic {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    width: 40px;
+    height: 40px;
+    object-fit: cover;
+    margin-right: 20px;
+    margin-top: 5px;
+}
+
 .center_box {
     text-align: center;
     padding: 30px;

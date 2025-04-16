@@ -29,7 +29,7 @@ serve_files(Request) :-
 server(Port) :-
     http_server(http_dispatch, [port(Port)]).
 
-%% Helper DCG that inserts current user info.
+%% Helper DCG that inserts current user info with profile image.
 current_user_info -->
     {
         (   http_session_data(user(CurrUser))
@@ -37,8 +37,10 @@ current_user_info -->
         ;   Display = "Not logged in"
         )
     },
-    html(div([class('user-info')],
-             [ p(Display) ])).
+    html(div([class('user-info')], [
+        img([src('/static/mascote.jpg'), class('mascote-pic')], []),
+        p(Display)
+    ])).
 
 
 %% Home page with navigation links and current user info.
@@ -74,7 +76,8 @@ register_page(_Request) :-
                  p([], [label([for(password)], 'Password:'),
                         input([name(password), type(password)])]),
                  p([], input([type(submit), value('Register')]))
-               ])
+               ]),
+          p(a([href('/')], 'Return Home'))
         ]).
 
 %% Registration Form Handler: extracts parameters and calls new_user/2.
