@@ -16,6 +16,9 @@
 :- http_handler(root(addfilm), add_film_page, []).
 :- http_handler(root(addfilm_submit), add_film_submit, []).
 :- http_handler(root(showfilms), show_films_page, []).
+:- http_handler(root(removefilm), remove_film_page, []).
+:- http_handler(root(removefilm_submit), remove_film_submit, []).
+
 
 %% Server launch predicate.
 server(Port) :-
@@ -43,6 +46,7 @@ home_page(_Request) :-
           p(a([href('/register')], 'Register')),
           p(a([href('/login')], 'Login')),
           p(a([href('/addfilm')], 'Add Film')),
+          p(a([href('/removefilm')], 'Remove Film')),
           p(a([href('/showfilms')], 'Show Your Films')),
           p(a([href('/logout')], 'Logout'))
         ]).
@@ -171,6 +175,46 @@ add_film_submit(Request) :-
           p(a([href('/')], 'Return Home')),
           p(a([href('/showfilms')], 'See My Films'))
         ]).
+
+%% Remove Film Page: If a user is logged in, displays a form to remove a film.
+%% Otherwise, sends a JavaScript alert and redirects to login.
+remove_film_page(_Request) :-
+    (   http_session_data(user(_))
+    ->  reply_html_page(
+            title('Remove Film'),
+            [ \current_user_info,
+              h1('Remove Film from Your List'),
+              form([action('/removefilm_submit'), method('post')],
+                   [ p([], [label([for(film_id)], 'Film ID (e.g., tt0004972):'),
+                            input([name(film_id), type(text)])]),
+                     p([], input([type(submit), value('Remove Film')]))
+                   ]),
+              p(a([href('/')], 'Return Home'))
+            ]
+        )
+    ;   reply_html_page(
+            title('Remove Film - Login Required'),
+            [ \current_user_info,
+              script([], 'alert("Please login first"); window.location.href = "/login";')
+            ]
+        )
+    ).
+
+%% Remove Film Handler: processes film removal requests.
+remove_film_submit(Request) :-
+    http_parameters(Request,
+                    [ film_id(FilmID, [])
+                    ]),
+    remove_film_msg(FilmID, Message),
+    reply_html_page(
+        title('Remove Film Result'),
+        [ \current_user_info,
+          h1('Remove Film'),
+          p(Message),
+          p(a([href('/')], 'Return Home')),
+          p(a([href('/showfilms')], 'See My Films'))
+        ]).
+
 
 %% Show Films Page: shows the list of films for the currently logged in user.
 %% If no user is logged in, it shows a pop-up and redirects to the login page.

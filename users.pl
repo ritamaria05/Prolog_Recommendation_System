@@ -79,6 +79,23 @@ add_film_msg(FilmID, Message) :-
         )
     ).
 
+%% remove_film_msg(+FilmID, -Message)
+%% Attempts to remove FilmID for the logged‑in user and returns a message.
+remove_film_msg(FilmID, Message) :-
+    (   http_session_data(user(UserID))
+    ->  true
+    ;   nb_getval(current_user, UserID)
+    ),
+    (   UserID == none
+    ->  Message = 'No user logged in'
+    ;   ( db2(UserID, film, FilmID)
+        ->  retractall_db2(UserID, film, FilmID),
+            Message = 'Film removed from account'
+        ;   Message = 'Film not found'
+        )
+    ).
+
+
 remove_film(FilmID) :-
     (   http_session_data(user(UserID))
     ->  true
