@@ -51,7 +51,7 @@ home_page(_Request) :-
         ],
         [ \current_user_info,
           div([class(center_box)], [
-              h1('Welcome to Prolog the Movie Recommender'),
+              h1('Welcome to Prolog, the Movie Recommender'),
               p('Tears were shed making this :)'),
               div([class(menu_container)], [
                   p([class(menu_item)], a([href('/register')], 'Register')),
