@@ -10,3 +10,7 @@ assert(db2('Test1',userName,'Test1')).
 assert(db2('Test1',password,test1)).
 assert(db2('Test2',userName,'Test2')).
 assert(db2('Test2',password,test2)).
+assert(db2(test3,userName,test3)).
+assert(db2(test3,password,test3)).
+assert(db2('123',userName,'123')).
+assert(db2('123',password,'123')).
