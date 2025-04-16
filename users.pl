@@ -49,27 +49,15 @@ get_logged_in_user :-
     nb_getval(current_user, Name),
     format('Current logged in user ID: ~w~n', [Name]).
 
-add_film(FilmID) :-
-    % Try to get the current user from the HTTP session; if not found, fallback to the global variable
-    (   http_session_data(user(UserID))
-    ->  true
-    ;   nb_getval(current_user, UserID)
-    ),
-    ( UserID == none
-    ->  writeln('Login first')
-    ;   ( \+ db2(UserID, film, FilmID)
-        ->  assert_db2(UserID, film, FilmID),
-            writeln('Successfully added')
-        ;   writeln('Already added')
-        )
-    ).
 
-%% Attempts to add the film and returns a message.
+add_film(FilmID) :-
+    add_film_msg(FilmID, Message),
+    writeln(Message).
+
+%% add_film_msg(+FilmID, -Message)
+%% Adds a film for the current user and returns a status message.
 add_film_msg(FilmID, Message) :-
-    (   http_session_data(user(UserID))
-    ->  true 
-    ;   UserID = none
-    ),
+    get_current_user(UserID),
     (   UserID == none
     ->  Message = 'No user logged in'
     ;   ( \+ db2(UserID, film, FilmID)
@@ -79,13 +67,22 @@ add_film_msg(FilmID, Message) :-
         )
     ).
 
-%% remove_film_msg(+FilmID, -Message)
-%% Attempts to remove FilmID for the logged‑in user and returns a message.
-remove_film_msg(FilmID, Message) :-
-    (   http_session_data(user(UserID))
-    ->  true
+
+%% get_current_user(-UserID)
+%% Tries to retrieve the current user from the HTTP session.  
+%% If that predicate isn’t available or fails, it falls back to nb_getval/2.
+get_current_user(UserID) :-
+    (   current_predicate(http_session_data/1)
+    ->  (   http_session_data(user(UserID)) 
+        ->  true
+        ;   UserID = none)
     ;   nb_getval(current_user, UserID)
-    ),
+    ).
+
+%% remove_film_msg(+FilmID, -Message)
+%% Attempts to remove FilmID for the current user and returns a message.
+remove_film_msg(FilmID, Message) :-
+    get_current_user(UserID),
     (   UserID == none
     ->  Message = 'No user logged in'
     ;   ( db2(UserID, film, FilmID)
@@ -95,21 +92,9 @@ remove_film_msg(FilmID, Message) :-
         )
     ).
 
-
 remove_film(FilmID) :-
-    (   http_session_data(user(UserID))
-    ->  true
-    ;   nb_getval(current_user, UserID)
-    ),
-    ( UserID == none
-    ->  writeln('Login first')
-    ;   ( db2(UserID, film, FilmID)
-        ->  retractall_db2(UserID, film, FilmID),
-            writeln('Film removed.')
-        ;   writeln('Film not found')
-        )
-    ).
-
+    remove_film_msg(FilmID, Message),
+    writeln(Message).
 
 show_films :-
     nb_getval(current_user, UserID),
