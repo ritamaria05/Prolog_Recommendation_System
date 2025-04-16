@@ -95,7 +95,8 @@ login_page(_Request) :-
                  p([], [label([for(password)], 'Password:'),
                         input([name(password), type(password)])]),
                  p([], input([type(submit), value('Login')]))
-               ])
+               ]),
+          p(a([href('/')], 'Return Home'))
         ]).
 
 %% Login Handler: extracts parameters, calls login/3, and shows the result.
@@ -131,53 +132,77 @@ logout_handler(_Request) :-
         ]).
 
 
-%% Add Film Page: provides a form for adding a film by its ID.
+%% Add Film Page: if a user is logged in, shows the add-film form.
+%% Otherwise, sends a JavaScript pop-up alert and redirects to the login page.
 add_film_page(_Request) :-
-    reply_html_page(
-        title('Add Film'),
-        [ \current_user_info,
-          h1('Add a Film to Your List'),
-          form([action('/addfilm_submit'), method('post')],
-               [ p([], [label([for(film_id)], 'Film ID (e.g., tt0004972):'),
-                        input([name(film_id), type(text)])]),
-                 p([], input([type(submit), value('Add Film')]))
-               ])
-        ]).
+    (   http_session_data(user(_))
+    ->  reply_html_page(
+            title('Add Film'),
+            [ \current_user_info,
+              h1('Add a Film to Your List'),
+              form([action('/addfilm_submit'), method('post')],
+                   [ p([], [label([for(film_id)], 'Film ID (e.g., tt0004972):'),
+                            input([name(film_id), type(text)])]),
+                     p([], input([type(submit), value('Add Film')]))
+                   ])
+            ]
+        )
+    ;   reply_html_page(
+            title('Add Film - Login Required'),
+            [ \current_user_info,
+              % JavaScript: pop-up alert then redirect to the login page.
+              script([], 'alert("Please login first"); window.location.href = "/login";')
+            ]
+        )
+    ).
 
-%% Add Film Handler: calls add_film/1 with the provided film ID.
+
+%% Add Film Handler: calls add_film_msg/2 with the provided film ID.
 add_film_submit(Request) :-
-    ( http_session_data(user(UserID)) -> true ; UserID = none ),
     http_parameters(Request,
                     [ film_id(FilmID, [])
                     ]),
-    add_film(FilmID),
+    add_film_msg(FilmID, Message),
     reply_html_page(
         title('Add Film Result'),
         [ \current_user_info,
           h1('Add Film'),
-          p('Film addition attempted – check your Prolog console for messages.'),
-          p(a([href('/')], 'Return Home'))
+          p(Message),
+          p(a([href('/')], 'Return Home')),
+          p(a([href('/showfilms')], 'See My Films'))
         ]).
 
 %% Show Films Page: shows the list of films for the currently logged in user.
+%% If no user is logged in, it shows a pop-up and redirects to the login page.
 show_films_page(_Request) :-
-    ( http_session_data(user(UserID)) -> true ; UserID = none ),
+    (   http_session_data(user(UserID))
+    ->  true
+    ;   UserID = none
+    ),
     (   UserID == none
-    ->  Films = []
+    ->  reply_html_page(
+            title('Show Films - Login Required'),
+            [ \current_user_info,
+              script([], 'alert("Please login first"); window.location.href = "/login";')
+            ]
+        )
     ;   findall(FilmName,
                 ( db2(UserID, film, FilmID),
                   db(FilmID, name, FilmName)
                 ),
-                Films)
-    ),
-    films_html(Films, FilmHtml),  % <-- Create the HTML chunk here
-    reply_html_page(
-        title('Your Films'),
-        [ \current_user_info,
-          h1('Your Film List'),
-          FilmHtml,
-          p(a([href('/')], 'Return Home'))
-        ]).
+                FilmsRaw),
+        sort(FilmsRaw, Films),  % Remove duplicates and sort alphabetically
+        films_html(Films, FilmHtml),
+        reply_html_page(
+            title('Your Films'),
+            [ \current_user_info,
+              h1('Your Film List'),
+              FilmHtml,
+              p(a([href('/')], 'Return Home'))
+            ]
+        )
+    ).
+
 
 %% New helper that returns a chunk of HTML based on the list
 films_html([], p('No films added.')).

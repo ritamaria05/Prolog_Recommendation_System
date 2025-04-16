@@ -50,36 +50,65 @@ get_logged_in_user :-
     format('Current logged in user ID: ~w~n', [Name]).
 
 add_film(FilmID) :-
-    nb_getval(current_user, UserID),  % Get the logged-in user ID
-    UserID = none ->
-        writeln('Login first');
-    \+ db2(UserID, _, FilmID) ->
-        assert_db2(UserID, film, FilmID), % Use UserID as argument
-        writeln('Sucessfully added');
-    writeln('Already added').
+    % Try to get the current user from the HTTP session; if not found, fallback to the global variable
+    (   http_session_data(user(UserID))
+    ->  true
+    ;   nb_getval(current_user, UserID)
+    ),
+    ( UserID == none
+    ->  writeln('Login first')
+    ;   ( \+ db2(UserID, film, FilmID)
+        ->  assert_db2(UserID, film, FilmID),
+            writeln('Successfully added')
+        ;   writeln('Already added')
+        )
+    ).
+
+%% Attempts to add the film and returns a message.
+add_film_msg(FilmID, Message) :-
+    (   http_session_data(user(UserID))
+    ->  true 
+    ;   UserID = none
+    ),
+    (   UserID == none
+    ->  Message = 'No user logged in'
+    ;   ( \+ db2(UserID, film, FilmID)
+        ->  assert_db2(UserID, film, FilmID),
+            Message = 'Film added to account'
+        ;   Message = 'Film already added'
+        )
+    ).
 
 remove_film(FilmID) :-
-    nb_getval(current_user, UserID),
-    UserID = none -> 
-        writeln('Login in first');
-    db2(UserID, film , FilmID) ->
-        retractall_db2(UserID, film, FilmID),
-        writeln('Film removed.');
-    writeln('Film not found').
-
-show_films :- 
-    nb_getval(current_user, UserID),                  % Get the logged-in user ID
-    UserID = none -> 
-        writeln('Login in first');
-    forall(db2(UserID, film, FilmID),                  % For all films associated with the user
-        ( db(FilmID, name, FilmName),                  % Get the FilmName from db/3 (movie.pl)
-          writeln(FilmName)                            % Print the FilmName
+    (   http_session_data(user(UserID))
+    ->  true
+    ;   nb_getval(current_user, UserID)
+    ),
+    ( UserID == none
+    ->  writeln('Login first')
+    ;   ( db2(UserID, film, FilmID)
+        ->  retractall_db2(UserID, film, FilmID),
+            writeln('Film removed.')
+        ;   writeln('Film not found')
         )
     ).
 
 
-
-
+show_films :-
+    nb_getval(current_user, UserID),
+    (   UserID == none
+    ->  writeln('Login first')
+    ;   findall(FilmName,
+                ( db2(UserID, film, FilmID),
+                  db(FilmID, name, FilmName)
+                ),
+                FilmsRaw),
+        sort(FilmsRaw, Films),  % Remove duplicates and sort the list
+        (   Films == []
+        ->  writeln('No films added.')
+        ;   forall(member(Film, Films), writeln(Film))
+        )
+    ).
 
 
 

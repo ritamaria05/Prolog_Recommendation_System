@@ -14,3 +14,7 @@ assert(db2(test3,userName,test3)).
 assert(db2(test3,password,test3)).
 assert(db2('123',userName,'123')).
 assert(db2('123',password,'123')).
+assert(db2('Max',film,tt0015864)).
+assert(db2('Max',film,tt0004972)).
+assert(db2('Max',film,tt0018773)).
+assert(db2('Max',film,tt0021749)).
