@@ -7,15 +7,24 @@ h1 {
   text-shadow: 1px 1px 2px grey;
 }
 
-p {
-    font-size: 18px;
-    padding: 6px;
+p{
+  font-family: "Verdana", sans-serif;
 }
 
 body{
     background-color: rgba(173, 216, 230, 0.5); /* lightblue with 50% transparency */
 }
 
+.user-info {
+    background-color: #ffffff;
+    padding: 5px;
+    margin-bottom: 10px;
+    border-radius: 12px;
+    text-align: left;
+    box-shadow: 0 0 5px rgba(0, 0, 0, 0.1);
+    font-size: 14px;
+    padding-left: 20px;
+}
 
 .center_box {
     text-align: center;
@@ -27,8 +36,7 @@ body{
     margin-top: 60px;
 }
 
-
 .menu_item {
     font-size: 18px;
-    margin: 10px 0;
+    padding: 5px;
 }

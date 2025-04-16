@@ -37,9 +37,8 @@ current_user_info -->
         ;   Display = "Not logged in"
         )
     },
-    html(div([style('background-color: #ffffff; padding: 5px; margin-bottom: 10px; border-radius: 12px;')],
+    html(div([class('user-info')],
              [ p(Display) ])).
-
 
 
 %% Home page with navigation links and current user info.
@@ -50,13 +49,16 @@ home_page(_Request) :-
         ],
         [ \current_user_info,
           div([class(center_box)], [
-              h1('Welcome to Movie Recommender'),
-              p([class(menu_item)], a([href('/register')], 'Register')),
-              p([class(menu_item)], a([href('/login')], 'Login')),
-              p([class(menu_item)], a([href('/addfilm')], 'Add Film')),
-              p([class(menu_item)], a([href('/removefilm')], 'Remove Film')),
-              p([class(menu_item)], a([href('/showfilms')], 'Show Your Films')),
-              p([class(menu_item)], a([href('/logout')], 'Logout'))
+              h1('Welcome to Prolog the Movie Recommender'),
+              p('Tears were shed making this :)'),
+              div([class(menu_container)], [
+                  p([class(menu_item)], a([href('/register')], 'Register')),
+                  p([class(menu_item)], a([href('/login')], 'Login')),
+                  p([class(menu_item)], a([href('/addfilm')], 'Add Film')),
+                  p([class(menu_item)], a([href('/removefilm')], 'Remove Film')),
+                  p([class(menu_item)], a([href('/showfilms')], 'Show Your Films')),
+                  p([class(menu_item)], a([href('/logout')], 'Logout'))
+              ])
           ])
         ]).
 
