@@ -6,10 +6,10 @@
 :- use_module(library(http/html_write)).
 :- ensure_loaded('users.pl').  % Loads your user management and movie code
 :- use_module(library(http/http_files)). % allows to serve static files like CSS
-:- http_handler(root(static), serve_files, [prefix]). % root handler for statics
+:- http_handler(root(file), serve_local_files, [prefix]). % root handler for statics
 
-serve_files(Request) :-
-    http_reply_from_files('./static', [], Request). % for css file in static folder
+serve_local_files(Request) :-
+    http_reply_from_files('.', [], Request). % for css file in static folder, dot means current folder
 
 % HTTP Handlers for various endpoints
 :- http_handler(root(.), home_page, []).
@@ -32,16 +32,15 @@ serve_files(Request) :-
 page_wrapper(Title, Body) :-
     reply_html_page(
         [ title(Title),
-          % link in your global stylesheet
-          link([ rel(stylesheet)
-               , type('text/css')
-               , href('/static/style.css')
+          link([ rel(stylesheet),
+                 type('text/css'),
+                 href('/file/style.css')
                ], [])
         ],
-        [ \current_user_info
-        , div([class(center_box)], Body)
-        ]
-    ).
+        [ \current_user_info,
+          div([class(center_box)], Body)
+        ]).
+
 
 %% Server launch predicate.
 server(Port) :-
@@ -56,9 +55,10 @@ current_user_info -->
         )
     },
     html(div([class('user-info')], [
-        img([src('/static/mascote.jpg'), class('mascote-pic')], []),
+        img([src('/file/mascote.jpg'), class('mascote-pic')], []),
         p(Display)
     ])).
+
 
 
 %% Home page with navigation links and current user info.
