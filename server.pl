@@ -271,10 +271,14 @@ show_films_page(_Request) :-
 films_html([], p('No films added.')).
 films_html(Films, \list_film_elements(Films)).
 
-%% Helper to render list items
+%% Helper to render list items with year in brackets
 list_film_elements([]) --> [].
-list_film_elements([H|T]) -->
-    html(p(H)),
+list_film_elements([Name|T]) -->
+    {
+        db(FilmId, name, Name),
+        ( db(FilmId, year, Year) -> format(string(YearStr), " (~w)", [Year]) ; YearStr = "" )
+    },
+    html(p([b(Name), span(YearStr)])),
     list_film_elements(T).
 
 
@@ -283,40 +287,51 @@ list_film_elements([H|T]) -->
 all_films_page(Request) :-
     % 1. Parse GET parameters
     http_parameters(Request, [
-      q(QAtom, [optional(true), default(''), atom])
+        q(QAtom, [optional(true), default(''), atom]),
+        year(Year, [optional(true), default(''), atom]),
+        country(Country, [optional(true), default(''), atom]),
+        genre(Genre, [optional(true), default(''), atom])
     ]),
     string_lower(QAtom, QLower),
 
-    % 2. Collect matching film names
+    % 2. Collect matching film names based on filters
     findall(Name,
-      ( db(_, name, Name),
-        ( QLower == '' ->
-            true
-        ;   string_lower(Name, Lower),
-            sub_string(Lower, _,_,_,QLower)
-        )
-      ),
-      RawNames),
+        ( db(FilmId, name, Name),
+          ( QLower == '' -> true
+          ; string_lower(Name, Lower), sub_string(Lower, _, _, _, QLower)
+          ),
+          ( Year == '' -> true ; atom_number(Year, YearNum), db(FilmId, year, YearNum) ),
+          ( Country == '' -> true ; db(FilmId, country, Country) ),
+          ( Genre == '' -> true ; db(FilmId, genre, Genre) )
+        ),
+        RawNames),
     sort(RawNames, FilmNames),
 
-    % 3. Decide on the “results” HTML
+    % 3. Generate the dropdown for years in descending order
+    findall(Y, db(_, year, Y), YearListRaw),
+    sort(YearListRaw, YearList),  % Sort ascending
+    reverse(YearList, YearListDesc),  % Reverse to descending order
+
+    % 4. Collect the country and genre options
+    findall(Country, db(_, country, Country), CountryListRaw),
+    sort(CountryListRaw, CountryList),
+
+    findall(Genre, db(_, genre, Genre), GenreListRaw),
+    sort(GenreListRaw, GenreList),
+
+    % 5. Decide on result rendering
     ( FilmNames = []
     -> Results = [ \html(p('No films match those criteria.')) ]
-    ; Results = [ \html(ul([style('list-style:none; margin:10; padding:0; font-family: "Copperplate", sans-serif;')],
-                      \film_list_items(FilmNames))) ]
+    ; Results = [ \html(ul([style('list-style:none; margin:10; padding:0; font-family: "Copperplate", sans-serif;')], \film_list_items(FilmNames))) ]
     ),
 
-
-    % 4. Build the full body list
-    BodyStart = [
-      h1('Browse All Films'),
-      \search_form(QLower)
-    ],
-    append(BodyStart, Results, BodyMid),
-    append(BodyMid, [ p(a([href('/')], 'Return Home')) ], FullBody),
-
-    % 5. Render
-    page_wrapper('All Films in Database', FullBody).
+    % 6. Build full page
+    page_wrapper('All Films in Database', [
+        h1('Browse All Films'),
+        \search_and_filter_form(QLower, Year, Country, Genre, YearListDesc, CountryList, GenreList),
+        \html(Results),
+        p(a([href('/')], 'Return Home'))
+    ]).
 
 
 
@@ -326,10 +341,11 @@ film_list_items([]) --> [].
 film_list_items([Name|T]) -->
     {
         db(FilmId, name, Name),
+        ( db(FilmId, year, Year) -> format(string(YearStr), " (~w)", [Year]) ; YearStr = "" ),
         ( db(FilmId, rating, Rating) -> true ; Rating = 'Unrated' )
     },
-    html(li([ style('margin: 10px 0;') ],  % ← 10px top & bottom spacing
-        [ b(Name), span(' – '), span(Rating) ])),
+    html(li([ style('margin: 10px 0;') ],
+        [ b(Name), span(YearStr), span(' – '), span(Rating) ])),
     film_list_items(T).
 
 
@@ -338,6 +354,59 @@ search_form(Query) -->
       input([type(text), name(q), value(Query), placeholder('Search…')]),
       input([type(submit), value('Search')])
     ])).
+
+
+search_and_filter_form(Query, Year, Country, Genre, YearList, CountryList, GenreList) -->
+    html(form([method(get), action('/allfilms')], [
+        span([style('font-family: "Copperplate", sans-serif; font-size: 15px; font-weight: 300; color: #222;')], 'Name:'),
+        input([type(text), name(q), value(Query), placeholder('Search…'),
+                style('font-family: "Copperplate", sans-serif; font-size: 15px; font-weight: 300; color: #222; margin:10px; padding:4px 8px; background:#ddd; border-radius:4px; border:none;')]),
+
+
+        span([style('font-family: "Copperplate", sans-serif; font-size: 15px; font-weight: 300; color: #222;')], 'Year:'),
+        select([name(year),
+                style('font-family: "Copperplate", sans-serif; font-size: 15px; font-weight: 300; color: #222; margin:10px; padding:4px 8px; background:#ddd; border-radius:4px; border:none;')],
+               [option([value('')], 'Any') | \select_options(YearList, Year)]),
+
+        span([style('font-family: "Copperplate", sans-serif; font-size: 15px; font-weight: 300; color: #222;')], 'Country:'),
+        select([name(country),
+                style('font-family: "Copperplate", sans-serif; font-size: 15px; font-weight: 300; color: #222; margin:10px; padding:4px 8px; background:#ddd; border-radius:4px; border:none;')],
+               [option([value('')], 'Any') | \select_options(CountryList, Country)]),
+
+        span([style('font-family: "Copperplate", sans-serif; font-size: 15px; font-weight: 300; color: #222;')], 'Genre:'),
+        select([name(genre),
+                style('font-family: "Copperplate", sans-serif; font-size: 15px; font-weight: 300; color: #222; margin:10px; padding:4px 8px; background:#ddd; border-radius:4px; border:none;')],
+               [option([value('')], 'Any') | \select_options(GenreList, Genre)]),
+
+        div([class('button-group')], [
+            input([type(submit), value('Filter'),
+                   style('font-family: "Copperplate", sans-serif; font-size: 17px; font-weight: 300; color: #222; margin:10px; padding:4px 8px; background:#ddd; border-radius:4px; border:none; cursor:pointer;')]),
+            a([href('/allfilms'),
+               style('font-family: "Copperplate", sans-serif; font-size: 17px; font-weight: 300; color: #222; margin:10px; padding:4px 8px; background:#ddd; border-radius:4px; text-decoration:none;')],
+              'Reset Filters')
+        ])
+    ])).
+
+
+
+%% Render options with current selected
+select_options([], _) --> [].
+select_options([H|T], Selected) -->
+    {
+        % convert Selected (which is from form) to a number if possible
+        ( catch(atom_number(Selected, SelectedNum), _, fail)
+        ->  ( H == SelectedNum -> Opt = option([value(H), selected], H)
+            ; Opt = option([value(H)], H)
+            )
+        ;   % fallback if Selected is not numeric
+            ( H == Selected -> Opt = option([value(H), selected], H)
+            ; Opt = option([value(H)], H)
+            )
+        )
+    },
+    html(Opt),
+    select_options(T, Selected).
+
 
 
 /*
