@@ -1,3 +1,4 @@
+:- encoding(utf8).
 :- use_module(library(persistency)).
 :- persistent db2(id:atom, property:atom, value:atom).
 :- persistent db(id:atom, property:atom, value:atom).

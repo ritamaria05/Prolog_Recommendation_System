@@ -1,4 +1,5 @@
 % server.pl
+:- encoding(utf8).
 :- use_module(library(http/http_session)).
 :- use_module(library(http/thread_httpd)).
 :- use_module(library(http/http_dispatch)).
@@ -23,6 +24,7 @@
 :- http_handler(root(addfilm), add_film_page, []).
 :- http_handler(root(addfilm_submit), add_film_submit, []).
 :- http_handler(root(showfilms), show_films_page, []).
+:- http_handler(root(allfilms), all_films_page, []).
 :- http_handler(root(removefilm), remove_film_page, []).
 :- http_handler(root(removefilm_submit), remove_film_submit, []).
 
@@ -34,6 +36,7 @@
 page_wrapper(Title, Body) :-
     reply_html_page(
         [ title(Title),
+          meta([charset('UTF-8')], []),     % ← tell the browser it’s UTF‑8
           link([ rel(stylesheet),
                  type('text/css'),
                  href('/style.css')
@@ -57,9 +60,10 @@ current_user_info -->
         )
     },
     html(div([class('user-info')], [
-        img([src('/mascote.jpg'), class('mascote-pic')], []),
+        a([href('/')], [img([src('/mascote.jpg'), class('mascote-pic')], [])]),
         p(Display)
     ])).
+
 
 
 
@@ -74,6 +78,7 @@ home_page(_Request) :-
           p([class(menu_item)], a([href('/addfilm')], 'Add Film')),
           p([class(menu_item)], a([href('/removefilm')], 'Remove Film')),
           p([class(menu_item)], a([href('/showfilms')], 'Show Your Films')),
+          p([class(menu_item)], a([href('/allfilms')], 'Show All Films')),
           p([class(menu_item)], a([href('/logout')], 'Logout'))
       ])
     ]).
@@ -271,6 +276,68 @@ list_film_elements([]) --> [].
 list_film_elements([H|T]) -->
     html(p(H)),
     list_film_elements(T).
+
+
+%% all_films_page(+Request)
+%% Displays all films with a title‐search box and (–) filters removed for brevity.
+all_films_page(Request) :-
+    % 1. Parse GET parameters
+    http_parameters(Request, [
+      q(QAtom, [optional(true), default(''), atom])
+    ]),
+    string_lower(QAtom, QLower),
+
+    % 2. Collect matching film names
+    findall(Name,
+      ( db(_, name, Name),
+        ( QLower == '' ->
+            true
+        ;   string_lower(Name, Lower),
+            sub_string(Lower, _,_,_,QLower)
+        )
+      ),
+      RawNames),
+    sort(RawNames, FilmNames),
+
+    % 3. Decide on the “results” HTML
+    ( FilmNames = []
+    -> Results = [ \html(p('No films match those criteria.')) ]
+    ; Results = [ \html(ul([style('list-style:none; margin:10; padding:0; font-family: "Copperplate", sans-serif;')],
+                      \film_list_items(FilmNames))) ]
+    ),
+
+
+    % 4. Build the full body list
+    BodyStart = [
+      h1('Browse All Films'),
+      \search_form(QLower)
+    ],
+    append(BodyStart, Results, BodyMid),
+    append(BodyMid, [ p(a([href('/')], 'Return Home')) ], FullBody),
+
+    % 5. Render
+    page_wrapper('All Films in Database', FullBody).
+
+
+
+%% film_list_items(+Names)// 
+%% Renders each film as "<Name> – <Rating>" with extra spacing.
+film_list_items([]) --> [].
+film_list_items([Name|T]) -->
+    {
+        db(FilmId, name, Name),
+        ( db(FilmId, rating, Rating) -> true ; Rating = 'Unrated' )
+    },
+    html(li([ style('margin: 10px 0;') ],  % ← 10px top & bottom spacing
+        [ b(Name), span(' – '), span(Rating) ])),
+    film_list_items(T).
+
+
+search_form(Query) -->
+    html(form([method(get), action('/allfilms')], [
+      input([type(text), name(q), value(Query), placeholder('Search…')]),
+      input([type(submit), value('Search')])
+    ])).
 
 
 /*

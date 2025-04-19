@@ -1,4 +1,5 @@
 :- dynamic db/3.
+:- encoding(utf8).
 
 db(tt0004972, name, 'The Birth of a Nation').
 db(tt0004972, runtime, 195).
