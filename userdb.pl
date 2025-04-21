@@ -30,3 +30,8 @@ assert(db2('Testy',password,testy)).
 assert(db2('Testy',film,tt0004972)).
 assert(db2('Max',film,tt0017925)).
 assert(db2('Max',film,tt0020629)).
+assert(db2('Rita',userName,'Rita')).
+assert(db2('Rita',password,'1810')).
+assert(db2('Rita',film,tt3783958)).
+assert(db2('Rita',film,tt0816692)).
+assert(db2('Rita',film,tt0468569)).

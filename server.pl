@@ -4,12 +4,14 @@
 :- use_module(library(http/thread_httpd)).
 :- use_module(library(http/http_dispatch)).
 :- use_module(library(http/http_parameters)).
+:- use_module(library(http/http_dispatch)).
 :- use_module(library(http/html_write)).
 :- ensure_loaded('users.pl').  % Loads your user management and movie code
 :- use_module(library(http/http_files)). % allows to serve static files like CSS
 %:- http_handler(root(file), serve_local_files, [prefix]). % root handler for statics
 :- http_handler('/style.css', http_reply_file('style.css', []), []).
 :- http_handler('/mascote.jpg', http_reply_file('mascote.jpg', []), []).
+:- ensure_loaded('recommend.pl'). % onde estão as perguntas
 
 %serve_local_files(Request) :-
  %   http_reply_from_files('.', [], Request). % for css file in static folder, dot means current folder
@@ -21,6 +23,9 @@
 :- http_handler(root(login), login_page, []).
 :- http_handler(root(login_submit), login_submit, []).
 :- http_handler(root(logout), logout_handler, []).
+:- http_handler(root(recommend), recommendation_page, []).
+:- http_handler(root(recommend_myfilms), recommend_myfilms_page, []).
+:- http_handler(root(recommend_questions), recommend_questions_page, []).
 :- http_handler(root(addfilm), add_film_page, []).
 :- http_handler(root(addfilm_submit), add_film_submit, []).
 :- http_handler(root(showfilms), show_films_page, []).
@@ -75,6 +80,7 @@ home_page(_Request) :-
       div([class(menu_container)], [
           p([class(menu_item)], a([href('/register')], 'Register')),
           p([class(menu_item)], a([href('/login')], 'Login')),
+          p([class(menu_item)], a([href('/recommend')], 'Get Recommendations')),
           p([class(menu_item)], a([href('/addfilm')], 'Add Film')),
           p([class(menu_item)], a([href('/removefilm')], 'Remove Film')),
           p([class(menu_item)], a([href('/showfilms')], 'Show Your Films')),
@@ -169,6 +175,147 @@ logout_handler(_Request) :-
         p(a([href('/')], 'Return Home'))
     ]).
 
+%% Recommendation Page: shows to options of Recommendation system
+%% Get a Recommendation based on my Film List
+%% Get a Recommendation based on specific questions
+recommendation_page(_Request) :-
+    page_wrapper('Recommendation', [
+        h1('Get a Recommendation'),
+        p('Choose one of the following options:'),
+        div([class(menu_container)], [
+            p([class(menu_item)], a([href('/recommend_myfilms')], 'Get a recommendation based on your film list')),
+            p([class(menu_item)], a([href('/recommend_questions')], 'Get a recommendation based on specific questions'))
+        ]),
+        p(a([href('/')], 'Return Home'))
+    ]).
+%% Recommendation based on my film list
+recommend_myfilms_page(_Request) :-
+    (   http_session_data(user(UserID))
+    ->  true
+    ;   UserID = none
+    ),
+    (   UserID == none
+    ->  reply_html_page(
+            title('Recommendation - Login Required'),
+            [ \current_user_info,
+              script([], 'alert("Please login first"); window.location.href = "/login";')
+            ]);   % Passo 1: Filmes que o usuário já viu
+        findall(FilmID,
+                db2(UserID, film, FilmID),
+                UserFilmIDs),
+
+        % Passo 2: Gêneros desses filmes
+        findall(Genre,
+                ( member(FID, UserFilmIDs),
+                  db(FID, genre, Genre)
+                ),
+                GenresRaw),
+        sort(GenresRaw, Genres),
+
+        % Passo 3: Buscar filmes do mesmo género, que o usuário ainda não viu
+        findall(RecommendedFilm,
+                ( member(G, Genres),
+                  db(RecFilmID, genre, G),
+                  \+ member(RecFilmID, UserFilmIDs),
+                  db(RecFilmID, name, RecommendedFilm)
+                ),
+                RecsRaw),
+        sort(RecsRaw, Recs),
+
+        % Passo 4: Gerar HTML e exibir recomendações
+        films_html(Recs, RecHtml),
+        page_wrapper('Recommended Films', [
+            h1('Recommended Based on Your Film List'),
+            (Recs == [] 
+            ->
+                (   p('No recommendations available.'),
+                    p(a([href('/add_films')], 'Go to Add Films first'))
+                )
+            ;  % Caso haja recomendações
+                RecHtml
+            ),
+            p(a([href('/')], 'Return Home'))
+        ])
+    ).
+
+%% Recommendation based on specific questions
+recommend_questions_page(_Request):-
+    (http_session_data(user(_)) -> true;
+    throw(http_reply(redirect('/login')))
+    ),
+    http_parameters(Request, [
+        ans1(Ans1Atom, [optional(true), default('0')]),
+        ans2(Ans2Atom, [optional(true), default('0')]),
+        ans3(Ans3Atom, [optional(true), default('0')]),
+        ans4(Ans4Atom, [optional(true), default('0')]),
+        ans5(Ans5Atom, [optional(true), default('0')])
+    ]),
+    catch(atom_number(Ans1Atom, Ans1), _, Ans1 = 0),
+    catch(atom_number(Ans2Atom, Ans2), _, Ans2 = 0),
+    catch(atom_number(Ans3Atom, Ans3), _, Ans3 = 0),
+    catch(atom_number(Ans4Atom, Ans4), _, Ans4 = 0),
+    catch(atom_number(Ans5Atom, Ans5), _, Ans5 = 0),
+    
+    (   Ans1 =:= 0, Ans2 =:= 0, Ans3 =:= 0, Ans4 =:= 0, Ans5 =:= 0
+    -> reply_html_page(
+            title('Recommendation by Questions'),
+            [ \current_user_info,
+              h1('Movie Recommendations'),
+              form([action('/recommend_questions'), method('GET')], [
+                \render_question(1, 'Do you prefer older movies (pre-2000)?',
+                ['No preference' = 0, 'Yes (pre-2000)'=1, 'No, modern movies'=2],Ans1),
+                \render_question(2, 'What types of movies are you in the mood for?',
+                ['No preference' = 0, 'Emotional'=1, 'Historical'=2, 'Cerebral'=3, 'Adventurous'=4, 'Funny'=5],Ans2),
+                \render_question(3, 'Do you have time for longer movies?',
+                ['No preference' = 0, 'Yes (> 119min)'=1, 'No (<120min)'=2],Ans3),
+                \render_question(4, 'Which country\'s movie do you prefer to watch?',
+                ['No preference' = 0, 'US'=1, 'UK'=2, 'Canada'=3, 'Japan'=4, 'Korea'=5, 'China'=6],Ans4),
+                \render_question(5, 'Do you prefer high-scoring movies?',
+                ['No preference' = 0, 'Yes (> 7)'=1],Ans5),
+                p(input([type(submit), value('Show Recommendations')], []))
+            ]),
+            p(a([href('/')], 'Return Home'))
+        ]); 
+        % Caso haja respostas
+        findall(Film,
+            ( recommend(Ans1, Ans2, Ans3, Ans4, Ans5, Film) ),
+            Films0),
+        sort(Films0, Films),
+        reply_html_page(
+            title('Your Recommendations'),
+            [ \current_user_info,
+              h1('We recommend the following movies:'),
+              ( Films = [] ->
+                  p('No recommendations found—try mudar as respostas.')
+              ; ul(\recommend_list(Films))
+              ),
+              p(a([href('/recommend_questions')], 'Try Again')),
+              p(a([href('/')], 'Return Home'))
+            ])
+    ).
+%% Gera um <p>label + <select> com as opções
+render_question(Id, Label, Options, Selected) -->
+    {
+      format(atom(Name), 'ans~w', [Id])
+    },
+    html([
+      p([ b(Label) ]),
+      select([name(Name)], 
+        \options_html(Options, Selected))
+    ]).
+
+options_html([], _) --> [].
+options_html([Text=Val|T], Sel) -->
+    {
+      ( integer(Sel), Sel =:= Val -> Attrs=[value(Val),selected] ; Attrs=[value(Val)] )
+    },
+    html(option(Attrs, Text)),
+    options_html(T, Sel).
+
+recommend_list([]) --> [].
+recommend_list([H|T]) -->
+    html(li(H)),
+    recommend_list(T).
 
 
 %% Add Film Page: if a user is logged in, shows the add-film form.
