@@ -25,7 +25,8 @@
 :- http_handler(root(logout), logout_handler, []).
 :- http_handler(root(recommend), recommendation_page, []).
 :- http_handler(root(recommend_myfilms), recommend_myfilms_page, []).
-:- http_handler(root(recommend_questions), recommend_questions_page, []).
+:- http_handler(root(recommend_questions), recommend_questions_form, []).
+:- http_handler(root(recommend_questions_result), recommend_questions_result, []).
 :- http_handler(root(addfilm), add_film_page, []).
 :- http_handler(root(addfilm_submit), add_film_submit, []).
 :- http_handler(root(showfilms), show_films_page, []).
@@ -239,7 +240,7 @@ recommend_myfilms_page(_Request) :-
     ).
 
 %% Recommendation based on specific questions
-recommend_questions_page(_Request):-
+recommend_questions_form(_Request):-
     (http_session_data(user(_)) -> true;
     throw(http_reply(redirect('/login')))
     ),
@@ -257,11 +258,11 @@ recommend_questions_page(_Request):-
     catch(atom_number(Ans5Atom, Ans5), _, Ans5 = 0),
     
     (   Ans1 =:= 0, Ans2 =:= 0, Ans3 =:= 0, Ans4 =:= 0, Ans5 =:= 0
-    -> reply_html_page(
+    -> page_wrapper(
             title('Recommendation by Questions'),
             [ \current_user_info,
               h1('Movie Recommendations'),
-              form([action('/recommend_questions'), method('GET')], [
+              form([action('/recommend_questions_result'), method('GET')], [
                 \render_question(1, 'Do you prefer older movies (pre-2000)?',
                 ['No preference' = 0, 'Yes (pre-2000)'=1, 'No, modern movies'=2],Ans1),
                 \render_question(2, 'What types of movies are you in the mood for?',
@@ -275,24 +276,49 @@ recommend_questions_page(_Request):-
                 p(input([type(submit), value('Show Recommendations')], []))
             ]),
             p(a([href('/')], 'Return Home'))
-        ]); 
-        % Caso haja respostas
-        findall(Film,
-            ( recommend(Ans1, Ans2, Ans3, Ans4, Ans5, Film) ),
-            Films0),
-        sort(Films0, Films),
-        reply_html_page(
-            title('Your Recommendations'),
-            [ \current_user_info,
-              h1('We recommend the following movies:'),
-              ( Films = [] ->
-                  p('No recommendations found—try mudar as respostas.')
-              ; ul(\recommend_list(Films))
-              ),
-              p(a([href('/recommend_questions')], 'Try Again')),
-              p(a([href('/')], 'Return Home'))
-            ])
+        ])
     ).
+recommend_questions_result(_Request):-
+% Garante que o usuário está logado
+    ( http_session_data(user(_)) -> true
+    ; throw(http_reply(redirect('/login')))
+    ),
+
+    % Lê parâmetros como átomos, default '0'
+    http_parameters(Request, [
+      ans1(Ans1Atom, [optional(true), default('0')]),
+      ans2(Ans2Atom, [optional(true), default('0')]),
+      ans3(Ans3Atom, [optional(true), default('0')]),
+      ans4(Ans4Atom, [optional(true), default('0')]),
+      ans5(Ans5Atom, [optional(true), default('0')])
+    ]),
+
+    % Converte cada átomo em inteiro; se falhar, fica 0
+    catch(atom_number(Ans1Atom, Ans1), _, Ans1 = 0),
+    catch(atom_number(Ans2Atom, Ans2), _, Ans2 = 0),
+    catch(atom_number(Ans3Atom, Ans3), _, Ans3 = 0),
+    catch(atom_number(Ans4Atom, Ans4), _, Ans4 = 0),
+    catch(atom_number(Ans5Atom, Ans5), _, Ans5 = 0),
+
+    % Gera as recomendações
+    findall(Film,
+            recommend(Ans1, Ans2, Ans3, Ans4, Ans5, Film),
+            Films0),
+    sort(Films0, Films),
+
+    % Exibe o resultado
+    page_wrapper('Recommendations by Questions', [
+        h1('We recommend the following movies:'),
+        ( Films == [] ->
+            p('No matches found — try again with different answers.'),
+            p(a([href('/recommend_questions')], 'Try Again'))
+        ; 
+            FilmsHtml
+        ),
+        p(a([href('/')], 'Return Home'))
+    ]).
+
+
 %% Gera um <p>label + <select> com as opções
 render_question(Id, Label, Options, Selected) -->
     {
