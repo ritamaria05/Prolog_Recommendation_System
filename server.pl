@@ -4,19 +4,16 @@
 :- use_module(library(http/thread_httpd)).
 :- use_module(library(http/http_dispatch)).
 :- use_module(library(http/http_parameters)).
-:- use_module(library(http/http_dispatch)).
 :- use_module(library(http/html_write)).
-:- ensure_loaded('users.pl').  % Loads your user management and movie code
-:- use_module(library(http/http_files)). % allows to serve static files like CSS
-%:- http_handler(root(file), serve_local_files, [prefix]). % root handler for statics
+:- ensure_loaded('users.pl').  % User management and movie DB
+:- use_module(library(http/http_files)). % Serve static files
+:- ensure_loaded('recommend.pl'). % Question-based recommendations
+
+% Static file handlers
 :- http_handler('/style.css', http_reply_file('style.css', []), []).
 :- http_handler('/mascote.jpg', http_reply_file('mascote.jpg', []), []).
-:- ensure_loaded('recommend.pl'). % onde estão as perguntas
 
-%serve_local_files(Request) :-
- %   http_reply_from_files('.', [], Request). % for css file in static folder, dot means current folder
-
-% HTTP Handlers for various endpoints
+% HTTP Handlers
 :- http_handler(root(.), home_page, []).
 :- http_handler(root(register), register_page, []).
 :- http_handler(root(register_submit), register_submit, []).
@@ -239,84 +236,81 @@ recommend_myfilms_page(_Request) :-
         ])
     ).
 
-%% Recommendation based on specific questions
-recommend_questions_form(_Request):-
-    (http_session_data(user(_)) -> true;
-    throw(http_reply(redirect('/login')))
+%% Recommendation based on specific questions (FORM)
+recommend_questions_form(Request) :-
+    (   http_session_data(user(UserID))
+    ->  true
+    ;   UserID = none
     ),
-    http_parameters(Request, [
-        ans1(Ans1Atom, [optional(true), default('0')]),
-        ans2(Ans2Atom, [optional(true), default('0')]),
-        ans3(Ans3Atom, [optional(true), default('0')]),
-        ans4(Ans4Atom, [optional(true), default('0')]),
-        ans5(Ans5Atom, [optional(true), default('0')])
-    ]),
-    catch(atom_number(Ans1Atom, Ans1), _, Ans1 = 0),
-    catch(atom_number(Ans2Atom, Ans2), _, Ans2 = 0),
-    catch(atom_number(Ans3Atom, Ans3), _, Ans3 = 0),
-    catch(atom_number(Ans4Atom, Ans4), _, Ans4 = 0),
-    catch(atom_number(Ans5Atom, Ans5), _, Ans5 = 0),
-    
-    (   Ans1 =:= 0, Ans2 =:= 0, Ans3 =:= 0, Ans4 =:= 0, Ans5 =:= 0
-    -> page_wrapper(
-            title('Recommendation by Questions'),
-            [ \current_user_info,
-              h1('Movie Recommendations'),
-              form([action('/recommend_questions_result'), method('GET')], [
-                \render_question(1, 'Do you prefer older movies (pre-2000)?',
-                ['No preference' = 0, 'Yes (pre-2000)'=1, 'No, modern movies'=2],Ans1),
-                \render_question(2, 'What types of movies are you in the mood for?',
-                ['No preference' = 0, 'Emotional'=1, 'Historical'=2, 'Cerebral'=3, 'Adventurous'=4, 'Funny'=5],Ans2),
-                \render_question(3, 'Do you have time for longer movies?',
-                ['No preference' = 0, 'Yes (> 119min)'=1, 'No (<120min)'=2],Ans3),
-                \render_question(4, 'Which country\'s movie do you prefer to watch?',
-                ['No preference' = 0, 'US'=1, 'UK'=2, 'Canada'=3, 'Japan'=4, 'Korea'=5, 'China'=6],Ans4),
-                \render_question(5, 'Do you prefer high-scoring movies?',
-                ['No preference' = 0, 'Yes (> 7)'=1],Ans5),
-                p(input([type(submit), value('Show Recommendations')], []))
-            ]),
-            p(a([href('/')], 'Return Home'))
+    (   UserID == none
+    ->  % Not logged in: pop up + redirect
+        reply_html_page(
+          title('Recommendation - Login Required'),
+          [ \current_user_info,
+            script([], 
+              'alert("Please login first"); window.location.href = "/login";')
+          ]
+        )
+    ;   % Logged in: render the questions form
+        page_wrapper('Recommendation by Questions', [
+          h1('Movie Recommendations'),
+          form([action('/recommend_questions_result'),method(get)], [
+            \render_question(1,'Do you prefer older movies (pre-2000)?',
+                             ['No preference'=0,'Yes (pre-2000)'=1,'No, modern movies'=2],0),
+            \render_question(2,'What types of movies are you in the mood for?',
+                             ['No preference'=0,'Emotional'=1,'Historical'=2,
+                              'Cerebral'=3,'Adventurous'=4,'Funny'=5],0),
+            \render_question(3,'Do you have time for longer movies?',
+                             ['No preference'=0,'Yes (>119min)'=1,'No (<120min)'=2],0),
+            \render_question(4,'Which country\'s movie do you prefer?',
+                             ['No preference'=0,'US'=1,'UK'=2,'Canada'=3,
+                              'Japan'=4,'Korea'=5,'China'=6],0),
+            \render_question(5,'Do you prefer high-scoring movies?',
+                             ['No preference'=0,'Yes (>7)'=1],0),
+            p(input([type(submit),value('Show Recommendations')] ))
+          ]),
+          p(a([href('/')],'Return Home'))
         ])
     ).
-recommend_questions_result(_Request):-
-% Garante que o usuário está logado
-    ( http_session_data(user(_)) -> true
-    ; throw(http_reply(redirect('/login')))
+    
+%% Recommendation based on specific questions (RESULT)
+recommend_questions_result(Request) :-
+    (   http_session_data(user(UserID))
+    ->  true
+    ;   UserID = none
     ),
-
-    % Lê parâmetros como átomos, default '0'
-    http_parameters(Request, [
-      ans1(Ans1Atom, [optional(true), default('0')]),
-      ans2(Ans2Atom, [optional(true), default('0')]),
-      ans3(Ans3Atom, [optional(true), default('0')]),
-      ans4(Ans4Atom, [optional(true), default('0')]),
-      ans5(Ans5Atom, [optional(true), default('0')])
-    ]),
-
-    % Converte cada átomo em inteiro; se falhar, fica 0
-    catch(atom_number(Ans1Atom, Ans1), _, Ans1 = 0),
-    catch(atom_number(Ans2Atom, Ans2), _, Ans2 = 0),
-    catch(atom_number(Ans3Atom, Ans3), _, Ans3 = 0),
-    catch(atom_number(Ans4Atom, Ans4), _, Ans4 = 0),
-    catch(atom_number(Ans5Atom, Ans5), _, Ans5 = 0),
-
-    % Gera as recomendações
-    findall(Film,
-            recommend(Ans1, Ans2, Ans3, Ans4, Ans5, Film),
-            Films0),
-    sort(Films0, Films),
-
-    % Exibe o resultado
-    page_wrapper('Recommendations by Questions', [
-        h1('We recommend the following movies:'),
+    (   UserID == none
+    ->  % Not logged in: pop up + redirect
+        reply_html_page(
+          title('Recommendation - Login Required'),
+          [ \current_user_info,
+            script([], 
+              'alert("Please login first"); window.location.href = "/login";')
+          ]
+        )
+    ;   % Logged in: process answers and render results
+        http_parameters(Request, [
+          ans1(A1,[optional(true),default('0')]),
+          ans2(A2,[optional(true),default('0')]),
+          ans3(A3,[optional(true),default('0')]),
+          ans4(A4,[optional(true),default('0')]),
+          ans5(A5,[optional(true),default('0')])
+        ]),
+        maplist(atom_number_default(0), [A1,A2,A3,A4,A5], [N1,N2,N3,N4,N5]),
+        findall(F, recommend(N1,N2,N3,N4,N5,F), Raw), sort(Raw, Films),
         ( Films == [] ->
-            p('No matches found — try again with different answers.'),
-            p(a([href('/recommend_questions')], 'Try Again'))
-        ; 
-            FilmsHtml
+            FilmsHtml = p('No matches found — try again with different answers.'),
+            RetryLink = p(a([href('/recommend_questions')],'Try Again'))
+        ;   films_html(Films, FilmsHtml),
+            RetryLink = []
         ),
-        p(a([href('/')], 'Return Home'))
-    ]).
+        page_wrapper('Recommendations by Questions', [
+          h1('We recommend the following movies:'),
+          FilmsHtml,
+          RetryLink,
+          p(a([href('/')],'Return Home'))
+        ])
+    ).
 
 
 %% Gera um <p>label + <select> com as opções
@@ -519,7 +513,7 @@ film_list_items([Name|T]) -->
         ( db(FilmId, rating, Rating) -> true ; Rating = 'Unrated' )
     },
     html(li([ style('margin: 10px 0;') ],
-        [ b(Name), span(YearStr), span(' – '), span(Rating) ])),
+        [ b(Name), span(YearStr), span(' – '), span(Rating) ])),
     film_list_items(T).
 
 
