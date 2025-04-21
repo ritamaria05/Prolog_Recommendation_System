@@ -49,6 +49,10 @@ page_wrapper(Title, Body) :-
           div([class(center_box)], Body)
         ]).
 
+%% Helper: convert an atom to an integer, defaulting to Default on failure
+atom_number_default(Default, Atom, Num) :-
+    catch(atom_number(Atom, N), _, N = Default),
+    Num = N.
 
 %% Server launch predicate.
 server(Port) :-
@@ -237,18 +241,17 @@ recommend_myfilms_page(_Request) :-
     ).
 
 %% Recommendation based on specific questions (FORM)
-recommend_questions_form(Request) :-
+recommend_questions_form(_Request) :-
     (   http_session_data(user(UserID))
     ->  true
     ;   UserID = none
     ),
     (   UserID == none
-    ->  % Not logged in: pop up + redirect
+    ->  % Not logged in: pop-up + redirect
         reply_html_page(
-          title('Recommendation - Login Required'),
+          title('Recommendation – Login Required'),
           [ \current_user_info,
-            script([], 
-              'alert("Please login first"); window.location.href = "/login";')
+            script([], 'alert("Please login first"); window.location.href = "/login";')
           ]
         )
     ;   % Logged in: render the questions form
@@ -267,7 +270,7 @@ recommend_questions_form(Request) :-
                               'Japan'=4,'Korea'=5,'China'=6],0),
             \render_question(5,'Do you prefer high-scoring movies?',
                              ['No preference'=0,'Yes (>7)'=1],0),
-            p(input([type(submit),value('Show Recommendations')] ))
+            p(input([type(submit),value('Show Recommendations')]))
           ]),
           p(a([href('/')],'Return Home'))
         ])
@@ -280,15 +283,14 @@ recommend_questions_result(Request) :-
     ;   UserID = none
     ),
     (   UserID == none
-    ->  % Not logged in: pop up + redirect
+    ->  % Not logged in: pop-up + redirect
         reply_html_page(
-          title('Recommendation - Login Required'),
+          title('Recommendation – Login Required'),
           [ \current_user_info,
-            script([], 
-              'alert("Please login first"); window.location.href = "/login";')
+            script([], 'alert("Please login first"); window.location.href = "/login";')
           ]
         )
-    ;   % Logged in: process answers and render results
+    ;   % Logged in: read answers, compute & display recommendations
         http_parameters(Request, [
           ans1(A1,[optional(true),default('0')]),
           ans2(A2,[optional(true),default('0')]),
