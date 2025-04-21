@@ -459,7 +459,7 @@ all_films_page(Request) :-
     sort(YearListRaw, YearList),  % Sort ascending
     reverse(YearList, YearListDesc),  % Reverse to descending order
 
-    % 4. Collect the country and genre options (fixed shadowing)
+    % 4. Collect the country and genre options
     findall(C, db(_, country, C), CountryListRaw),
     sort(CountryListRaw, CountryList),
 
