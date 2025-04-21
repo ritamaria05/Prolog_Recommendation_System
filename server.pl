@@ -312,12 +312,13 @@ all_films_page(Request) :-
     sort(YearListRaw, YearList),  % Sort ascending
     reverse(YearList, YearListDesc),  % Reverse to descending order
 
-    % 4. Collect the country and genre options
-    findall(Country, db(_, country, Country), CountryListRaw),
+    % 4. Collect the country and genre options (fixed shadowing)
+    findall(C, db(_, country, C), CountryListRaw),
     sort(CountryListRaw, CountryList),
 
-    findall(Genre, db(_, genre, Genre), GenreListRaw),
+    findall(G, db(_, genre, G), GenreListRaw),
     sort(GenreListRaw, GenreList),
+
 
     % 5. Decide on result rendering
     ( FilmNames = []

@@ -1,11 +1,14 @@
 :- encoding(utf8).
+
 :- use_module(library(persistency)).
+
+% Only db2/3 (users & their films) is persistent in userdb.pl
 :- persistent db2(id:atom, property:atom, value:atom).
-:- persistent db(id:atom, property:atom, value:atom).
+:- db_attach('userdb.pl', []).
 
-:- db_attach('userdb.pl', []).  % Persistent database file
-:- [movie].
-
+% Load the static movie database as a normal dynamic predicate
+:- consult('movie.pl').
+:- dynamic db/3.
 
 :- nb_setval(current_user, none).
 
