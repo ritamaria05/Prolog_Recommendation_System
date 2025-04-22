@@ -71,9 +71,6 @@ current_user_info -->
         p(Display)
     ])).
 
-
-
-
 %% Home page with navigation links and current user info.
 home_page(_Request) :-
     page_wrapper('Movie App Home', [
@@ -90,7 +87,6 @@ home_page(_Request) :-
           p([class(menu_item)], a([href('/logout')], 'Logout'))
       ])
     ]).
-
 
 %% Registration Page: displays a form for new user registration.
 register_page(_Request) :-
@@ -127,8 +123,6 @@ register_submit(Request) :-
         p(Message),
         p(a([href('/')], 'Return Home'))
     ]).
-
-
 
 %% Login Page: presents a login form.
 login_page(_Request) :-
@@ -190,6 +184,7 @@ recommendation_page(_Request) :-
         ]),
         p(a([href('/')], 'Return Home'))
     ]).
+
 %% Recommendation based on my film list
 recommend_myfilms_page(_Request) :-
     (   http_session_data(user(UserID))
@@ -278,41 +273,56 @@ recommend_questions_form(_Request) :-
     
 %% Recommendation based on specific questions (RESULT)
 recommend_questions_result(Request) :-
-    (   http_session_data(user(UserID))
-    ->  true
-    ;   UserID = none
+% 1. Pega o user da sessão (ou none)
+(   http_session_data(user(UserID)) -> true ; UserID = none ),
+
+% 2. Se não logado, alerta + redireciona
+(   UserID == none
+->  reply_html_page(
+        title('Recommendation – Login Required'),
+        [ \current_user_info,
+          script([], 'alert("Please login first"); window.location.href = "/login";')
+        ]
+    )
+;   % 3. Está logado: lê respostas e filtra filmes
+    http_parameters(Request, [
+        ans1(A1, [optional(true), default('0')]),
+        ans2(A2, [optional(true), default('0')]),
+        ans3(A3, [optional(true), default('0')]),
+        ans4(A4, [optional(true), default('0')]),
+        ans5(A5, [optional(true), default('0')])
+    ]),
+    maplist(atom_number_default(0), [A1,A2,A3,A4,A5], [N1,N2,N3,N4,N5]),
+    findall(F, recommend(N1,N2,N3,N4,N5,F), Raw),
+    sort(Raw, Films),
+
+    % 4. Monta o HTML da lista: sem bullets, sem padding/margin
+    (   Films == []
+    ->  FilmsHtml = [ p('No matches found — try again with different answers.') ]
+    ;   FilmsHtml = [
+            ul([ style('list-style:none; margin:0; padding:0;') ],
+               \list_films(Films))
+        ]
     ),
-    (   UserID == none
-    ->  % Not logged in: pop-up + redirect
-        reply_html_page(
-          title('Recommendation – Login Required'),
-          [ \current_user_info,
-            script([], 'alert("Please login first"); window.location.href = "/login";')
-          ]
-        )
-    ;   % Logged in: read answers, compute & display recommendations
-        http_parameters(Request, [
-          ans1(A1,[optional(true),default('0')]),
-          ans2(A2,[optional(true),default('0')]),
-          ans3(A3,[optional(true),default('0')]),
-          ans4(A4,[optional(true),default('0')]),
-          ans5(A5,[optional(true),default('0')])
-        ]),
-        maplist(atom_number_default(0), [A1,A2,A3,A4,A5], [N1,N2,N3,N4,N5]),
-        findall(F, recommend(N1,N2,N3,N4,N5,F), Raw), sort(Raw, Films),
-        ( Films == [] ->
-            FilmsHtml = p('No matches found — try again with different answers.'),
-            RetryLink = p(a([href('/recommend_questions')],'Try Again'))
-        ;   films_html(Films, FilmsHtml),
-            RetryLink = []
-        ),
-        page_wrapper('Recommendations by Questions', [
-          h1('We recommend the following movies:'),
-          FilmsHtml,
-          RetryLink,
-          p(a([href('/')],'Return Home'))
-        ])
-    ).
+
+    % 5. Renderiza tudo usando page_wrapper e um div.container
+    page_wrapper('Your Movie Recommendations', [
+        h2('We recommend the following movies:'),
+        div([ class(container) ], FilmsHtml),
+        p(a([ href('/') ], 'Return Home'))
+    ])
+).
+
+%% Auxiliar: lista de <li> para cada filme
+list_films([]) --> [].
+list_films([H|T]) -->
+html(li(H)),
+list_films(T).
+
+
+atom_number_default(Default, Atom, Number) :-
+catch(atom_number(Atom, Number), _, Number = Default).
+
 
 
 %% Gera um <p>label + <select> com as opções
