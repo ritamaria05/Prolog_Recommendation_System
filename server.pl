@@ -70,93 +70,202 @@ current_user_info -->
 
 %% Home page with navigation links and current user info.
 home_page(_Request) :-
+    % build your button CSS as a single‐line atom (no backslash continuations!)
+    BtnStyle = 'font-family: \"Copperplate\", sans-serif; font-size: 17px;
+                font-weight: 300; color: #222; margin:10px; padding:4px 8px;
+                background:#ddd; border:none; border-radius:4px; text-decoration:none;',
+    % hover‐in/out JS stays exactly the same
+    HoverIn  = "this.style.background='#ccc';",
+    HoverOut = "this.style.background='#ddd';",
+
     page_wrapper('Movie App Home', [
       h1('Welcome to Prolog, the Movie Recommender'),
       p('Tears were shed making this :)'),
       div([class(menu_container)], [
-          p([class(menu_item)], a([href('/register')], 'Register')),
-          p([class(menu_item)], a([href('/login')], 'Login')),
-          p([class(menu_item)], a([href('/recommend')], 'Get Recommendations')),
-          p([class(menu_item)], a([href('/addfilm')], 'Add Film')),
-          p([class(menu_item)], a([href('/removefilm')], 'Remove Film')),
-          p([class(menu_item)], a([href('/showfilms')], 'Show Your Films')),
-          p([class(menu_item)], a([href('/allfilms')], 'Show All Films')),
-          p([class(menu_item)], a([href('/logout')], 'Logout'))
+        p([class(menu_item)], a([ href('/register'),
+                                  style(BtnStyle),
+                                  onmouseover(HoverIn),
+                                  onmouseout(HoverOut)
+                                ], 'Register')),
+        p([class(menu_item)], a([ href('/login'),
+                                  style(BtnStyle),
+                                  onmouseover(HoverIn),
+                                  onmouseout(HoverOut)
+                                ], 'Login')),
+        p([class(menu_item)], a([ href('/recommend'),
+                                  style(BtnStyle),
+                                  onmouseover(HoverIn),
+                                  onmouseout(HoverOut)
+                                ], 'Get Recommendations')),
+        p([class(menu_item)], a([ href('/addfilm'),
+                                  style(BtnStyle),
+                                  onmouseover(HoverIn),
+                                  onmouseout(HoverOut)
+                                ], 'Add Film')),
+        p([class(menu_item)], a([ href('/removefilm'),
+                                  style(BtnStyle),
+                                  onmouseover(HoverIn),
+                                  onmouseout(HoverOut)
+                                ], 'Remove Film')),
+        p([class(menu_item)], a([ href('/showfilms'),
+                                  style(BtnStyle),
+                                  onmouseover(HoverIn),
+                                  onmouseout(HoverOut)
+                                ], 'Show Your Films')),
+        p([class(menu_item)], a([ href('/allfilms'),
+                                  style(BtnStyle),
+                                  onmouseover(HoverIn),
+                                  onmouseout(HoverOut)
+                                ], 'Show All Films')),
+        p([class(menu_item)], a([ href('/logout'),
+                                  style(BtnStyle),
+                                  onmouseover(HoverIn),
+                                  onmouseout(HoverOut)
+                                ], 'Logout'))
       ])
     ]).
 
+
+
 %% Registration Page: displays a form for new user registration.
 register_page(_Request) :-
-     page_wrapper('Register', [
-       h1('Register New User'),
-       form([ action('/register_submit'), method('post') ], [
-         p([], [
-           label([for(name)],     'Username:'),
-           input([name(name), type(text)])
-         ]),
-         p([], [
-           label([for(password)], 'Password:'),
-           input([name(password), type(password)])
-         ]),
-         p([], input([type(submit), value('Register')]))
-       ]),
-       p(a([href('/')], 'Return Home'))
-     ]).
+    % same button/link style as home_page
+    BtnStyle = 'font-family: \"Copperplate\", sans-serif; font-size: 17px;
+               font-weight: 300; color: #222; margin:10px; padding:4px 8px;
+               background:#ddd; border:none; border-radius:4px; text-decoration:none;',
+    HoverIn  = "this.style.background='#ccc';",
+    HoverOut = "this.style.background='#ddd';",
+
+    page_wrapper('Register', [
+      h1('Register New User'),
+      form([ action('/register_submit'), method('post') ], [
+        p([], [
+          label([for(name)], 'Username:'),
+          input([name(name), type(text),
+                 style(BtnStyle),
+                 onmouseover(HoverIn),
+                 onmouseout(HoverOut)
+               ])
+        ]),
+        p([], [
+          label([for(password)], 'Password:'),
+          input([name(password), type(password),
+                 style(BtnStyle),
+                 onmouseover(HoverIn),
+                 onmouseout(HoverOut)
+               ])
+        ]),
+        p([], input([type(submit), value('Register'),
+                     style(BtnStyle),
+                     onmouseover(HoverIn),
+                     onmouseout(HoverOut)
+                   ]))
+      ]),
+      p(a([ href('/'), style(BtnStyle),
+            onmouseover(HoverIn),
+            onmouseout(HoverOut)
+          ], 'Return Home'))
+    ]).
 
 %% Registration Form Handler: extracts parameters and calls new_user/2.
 register_submit(Request) :-
     http_parameters(Request,
-                    [ name(Name, []),
-                      password(Pass, [])
-                    ]),
+        [ name(Name, []),
+          password(Pass, [])
+        ]),
     new_user(Name, Pass, Message),
     ( Message == 'New User added and logged in'
     -> http_session_retractall(user(_)),
        http_session_assert(user(Name))
     ; true
     ),
+
+    % same styled button/link as the other pages
+    BtnStyle = 'font-family: \"Copperplate\", sans-serif; font-size: 17px;
+               font-weight: 300; color: #222; margin:10px; padding:4px 8px;
+               background:#ddd; border:none; border-radius:4px; text-decoration:none;',
+    HoverIn  = "this.style.background='#ccc';",
+    HoverOut = "this.style.background='#ddd';",
+
     page_wrapper('Registration Result', [
         h1('Registration'),
         p(Message),
-        p(a([href('/')], 'Return Home'))
+        p(a([ href('/'),
+              style(BtnStyle),
+              onmouseover(HoverIn),
+              onmouseout(HoverOut)
+            ], 'Return Home'))
     ]).
 
 %% Login Page: presents a login form.
 login_page(_Request) :-
-     page_wrapper('Login', [
-       h1('User Login'),
-       form([ action('/login_submit'), method('post') ], [
-          p([], [
-            label([for(name)],     'Username:'),
-            input([name(name), type(text)])
-          ]),
-          p([], [
-            label([for(password)], 'Password:'),
-            input([name(password), type(password)])
-          ]),
-          p([], input([type(submit), value('Login')]))
+    % reuse the same style
+    BtnStyle = 'font-family: \"Copperplate\", sans-serif; font-size: 17px;
+               font-weight: 300; color: #222; margin:10px; padding:4px 8px;
+               background:#ddd; border:none; border-radius:4px; text-decoration:none;',
+    HoverIn  = "this.style.background='#ccc';",
+    HoverOut = "this.style.background='#ddd';",
+
+    page_wrapper('Login', [
+      h1('User Login'),
+      form([ action('/login_submit'), method('post') ], [
+        p([], [
+          label([for(name)], 'Username:'),
+          input([name(name), type(text),
+                 style(BtnStyle),
+                 onmouseover(HoverIn),
+                 onmouseout(HoverOut)
+               ])
         ]),
-        p(a([href('/')], 'Return Home'))
-     ]).
+        p([], [
+          label([for(password)], 'Password:'),
+          input([name(password), type(password),
+                 style(BtnStyle),
+                 onmouseover(HoverIn),
+                 onmouseout(HoverOut)
+               ])
+        ]),
+        p([], input([type(submit), value('Login'),
+                     style(BtnStyle),
+                     onmouseover(HoverIn),
+                     onmouseout(HoverOut)
+                   ]))
+      ]),
+      p(a([ href('/'), style(BtnStyle),
+            onmouseover(HoverIn),
+            onmouseout(HoverOut)
+          ], 'Return Home'))
+    ]).
 
 %% Login Handler: extracts parameters, calls login/3, and shows the result.
 login_submit(Request) :-
     http_parameters(Request,
-                    [ name(Name, []),
-                      password(Pass, [])
-                    ]),
+        [ name(Name, []),
+          password(Pass, [])
+        ]),
     login(Name, Pass, Message),
     ( Message == 'Login Successful'
     -> http_session_retractall(user(_)),
        http_session_assert(user(Name))
     ; true
     ),
+
+    % reuse the same style
+    BtnStyle = 'font-family: \"Copperplate\", sans-serif; font-size: 17px;
+               font-weight: 300; color: #222; margin:10px; padding:4px 8px;
+               background:#ddd; border:none; border-radius:4px; text-decoration:none;',
+    HoverIn  = "this.style.background='#ccc';",
+    HoverOut = "this.style.background='#ddd';",
+
     page_wrapper('Login Result', [
         h1('Login'),
         p(Message),
-        p(a([href('/')], 'Return Home'))
+        p(a([ href('/'),
+              style(BtnStyle),
+              onmouseover(HoverIn),
+              onmouseout(HoverOut)
+            ], 'Return Home'))
     ]).
-
 
 
 %% Logout Handler: logs out the user.
@@ -165,21 +274,50 @@ logout_handler(_Request) :-
     page_wrapper('Logout', [
         h1('Logout'),
         p('You have been logged out.'),
-        p(a([href('/')], 'Return Home'))
+        p(a([ href('/'),
+               style('font-family: "Copperplate", sans-serif; font-size: 17px; font-weight: 300; color: #222; margin:10px; padding:4px 8px; background:#ddd; border:none; border-radius:4px; text-decoration:none; cursor:pointer;'),
+               onmouseover("this.style.background='#ccc';"),
+               onmouseout("this.style.background='#ddd';")
+             ],
+             'Return Home'))
     ]).
+
 
 %% Recommendation Page: shows to options of Recommendation system
 %% Get a Recommendation based on my Film List
 %% Get a Recommendation based on specific questions
 recommendation_page(_Request) :-
+    % reuse the same button style + hover you’ve used elsewhere
+    BtnStyle = 'font-family: "Copperplate", sans-serif;
+               font-size: 17px; font-weight: 300; color: #222;
+               margin:25px; padding:4px 8px; background:#ddd;
+               border:none; border-radius:4px; text-decoration:none; cursor:pointer;',
+    HoverIn  = "this.style.background='#ccc';",
+    HoverOut = "this.style.background='#ddd';",
+
     page_wrapper('Recommendation', [
-        h1('Get a Recommendation'),
-        p('Choose one of the following options:'),
-        div([class(menu_container)], [
-            p([class(menu_item)], a([href('/recommend_myfilms')], 'Get a recommendation based on your film list')),
-            p([class(menu_item)], a([href('/recommend_questions')], 'Get a recommendation based on specific questions'))
-        ]),
-        p(a([href('/')], 'Return Home'))
+      h1('Get a Recommendation'),
+      p('Choose one of the following options:'),
+      div([class(menu_container)], [
+        p(a([
+             href('/recommend_myfilms'),
+             style(BtnStyle),
+             onmouseover(HoverIn),
+             onmouseout(HoverOut)
+           ], 'Based on Your Film List')),
+        p(a([
+             href('/recommend_questions'),
+             style(BtnStyle),
+             onmouseover(HoverIn),
+             onmouseout(HoverOut)
+           ], 'By Specific Questions'))
+      ]),
+      p(a([
+            href('/'),
+            style(BtnStyle),
+            onmouseover(HoverIn),
+            onmouseout(HoverOut)
+          ], 'Return Home'))
     ]).
 
 %% Recommendation based on my film list
@@ -249,66 +387,111 @@ recommend_questions_form(_Request) :-
     ;   % Logged in: render the questions form
         page_wrapper('Recommendation by Questions', [
           h1('Movie Recommendations'),
-          form([action('/recommend_questions_result'),method(get)], [
-            \render_question(1,'Do you prefer older movies (pre-2000)?',
-                             ['No preference'=0,'Yes (pre-2000)'=1,'No, modern movies'=2],0),
-            \render_question(2,'What types of movies are you in the mood for?',
-                             ['No preference'=0,'Emotional'=1,'Historical'=2,
-                              'Cerebral'=3,'Adventurous'=4,'Funny'=5],0),
-            \render_question(3,'Do you have time for longer movies?',
-                             ['No preference'=0,'Yes (>119min)'=1,'No (<120min)'=2],0),
-            \render_question(4,'Which country\'s movie do you prefer?',
-                             ['No preference'=0,'US'=1,'UK'=2,'Canada'=3,
-                              'Japan'=4,'Korea'=5,'China'=6],0),
-            \render_question(5,'Do you prefer high-scoring movies?',
-                             ['No preference'=0,'Yes (>7)'=1],0),
-            p(input([type(submit),value('Show Recommendations')]))
-          ]),
-          p(a([href('/')],'Return Home'))
+          form([ action('/recommend_questions_result'),
+                 method(get) ],
+               [
+                 \render_question(1,'Do you prefer older movies (pre-2000)?',
+                                  ['No preference'=0,'Yes (pre-2000)'=1,'No, modern movies'=2],0),
+                 \render_question(2,'What types of movies are you in the mood for?',
+                                  ['No preference'=0,'Emotional'=1,'Historical'=2,
+                                   'Cerebral'=3,'Adventurous'=4,'Funny'=5],0),
+                 \render_question(3,'Do you have time for longer movies?',
+                                  ['No preference'=0,'Yes (>119min)'=1,'No (<120min)'=2],0),
+                 \render_question(4,'Which country\'s movie do you prefer?',
+                                  ['No preference'=0,'US'=1,'UK'=2,'Canada'=3,
+                                   'Japan'=4,'Korea'=5,'China'=6],0),
+                 \render_question(5,'Do you prefer high-scoring movies?',
+                                  ['No preference'=0,'Yes (>7)'=1],0),
+                 p(input([
+                     type(submit),
+                     value('Show Recommendations'),
+                     style('font-family: "Copperplate", sans-serif; font-size: 17px; font-weight: 300; color: #222; margin:10px; padding:4px 8px; background:#ddd; border:none; border-radius:4px; cursor:pointer;'),
+                     onmouseover("this.style.background='#ccc';"),
+                     onmouseout("this.style.background='#ddd';")
+                   ]))
+               ]),
+          p(a([ href('/'),
+                 style('font-family: "Copperplate", sans-serif; font-size: 17px; font-weight: 300; color: #222; margin:10px; padding:4px 8px; background:#ddd; border:none; border-radius:4px; text-decoration:none; cursor:pointer;'),
+                 onmouseover("this.style.background='#ccc';"),
+                 onmouseout("this.style.background='#ddd';")
+               ],
+               'Return Home'))
         ])
     ).
+
     
 %% Recommendation based on specific questions (RESULT)
 recommend_questions_result(Request) :-
-% 1. Pega o user da sessão (ou none)
-(   http_session_data(user(UserID)) -> true ; UserID = none ),
+    % 1. Get user session or none
+    (   http_session_data(user(UserID)) -> true ; UserID = none ),
 
-% 2. Se não logado, alerta + redireciona
-(   UserID == none
-->  reply_html_page(
-        title('Recommendation – Login Required'),
-        [ \current_user_info,
-          script([], 'alert("Please login first"); window.location.href = "/login";')
-        ]
-    )
-;   % 3. Está logado: lê respostas e filtra filmes
-    http_parameters(Request, [
-        ans1(A1, [optional(true), default('0')]),
-        ans2(A2, [optional(true), default('0')]),
-        ans3(A3, [optional(true), default('0')]),
-        ans4(A4, [optional(true), default('0')]),
-        ans5(A5, [optional(true), default('0')])
-    ]),
-    maplist(atom_number_default(0), [A1,A2,A3,A4,A5], [N1,N2,N3,N4,N5]),
-    findall(F, recommend(N1,N2,N3,N4,N5,F), Raw),
-    sort(Raw, Films),
+    % 2. If not logged in, alert and redirect
+    (   UserID == none
+    ->  reply_html_page(
+            title('Recommendation – Login Required'),
+            [ \current_user_info,
+              script([], 'alert("Please login first"); window.location.href = "/login";')
+            ]
+        )
+    ;   % 3. Logged in: get answers and find films
+        http_parameters(Request, [
+            ans1(A1, [optional(true), default('0')]),
+            ans2(A2, [optional(true), default('0')]),
+            ans3(A3, [optional(true), default('0')]),
+            ans4(A4, [optional(true), default('0')]),
+            ans5(A5, [optional(true), default('0')])
+        ]),
+        maplist(atom_number_default(0), [A1,A2,A3,A4,A5], [N1,N2,N3,N4,N5]),
+        findall(F, recommend(N1,N2,N3,N4,N5,F), Raw),
+        sort(Raw, Films),
 
-    % 4. Monta o HTML da lista: sem bullets, sem padding/margin
-    (   Films == []
-    ->  FilmsHtml = [ p('No matches found — try again with different answers.') ]
-    ;   FilmsHtml = [
-            ul([ style('list-style:none; margin:0; padding:0;') ],
-               \list_films(Films))
-        ]
-    ),
+        % 4. Styled film list HTML
+        (   Films == []
+        ->  FilmsHtml = [ p(style('font-family: "Copperplate", sans-serif; font-size: 16px; color: #444;'),
+                            'No matches found — try again with different answers.') ]
+        ;   FilmsHtml = [
+                ul([ style('list-style:none; margin:20px 0; padding:0; font-family: "Copperplate", sans-serif;') ],
+                   \styled_film_links(Films))
+            ]
+        ),
 
-    % 5. Renderiza tudo usando page_wrapper e um div.container
-    page_wrapper('Your Movie Recommendations', [
-        h2('We recommend the following movies:'),
-        div([ class(container) ], FilmsHtml),
-        p(a([ href('/') ], 'Return Home'))
-    ])
-).
+        % 5. Button styles
+        BtnStyle = 'font-family: "Copperplate", sans-serif; font-size: 17px; font-weight: 300; color: #222; margin:10px; padding:4px 8px; background:#ddd; border:none; border-radius:4px; text-decoration:none; cursor:pointer;',
+        HoverIn  = "this.style.background='#ccc';",
+        HoverOut = "this.style.background='#ddd';",
+
+        % 6. Render full page
+        page_wrapper('Your Movie Recommendations', [
+            h1([style('font-family: "Copperplate", sans-serif; color:#222;')],
+               'We recommend the following movies:'),
+            div([ class(container) ], FilmsHtml),
+            p(a([ href('/'),
+                  style(BtnStyle),
+                  onmouseover(HoverIn),
+                  onmouseout(HoverOut)
+                ],
+                'Return Home'))
+        ])
+    ).
+
+% Helper for consistent film links (same as used in show_films_page)
+styled_film_links([]) --> [].
+styled_film_links([H|T]) -->
+  {
+    db(FilmId, name, H),
+    format(string(Link), "https://www.imdb.com/title/~w/", [FilmId]),
+    BtnStyle = 'list-style:none; margin:20px; padding:0; font-family: "Copperplate", sans-serif;border:15px;',
+    LiStyle = 'margin-bottom:7px;'  % Adjust spacing here
+  },
+  html(li([style(LiStyle)],
+    a([ href(Link),
+        target('_blank'),
+        style(BtnStyle)
+      ], H)
+  )),
+  styled_film_links(T).
+
+
 
 %% Auxiliar: lista de <li> para cada filme
 list_films([]) --> [].
@@ -335,7 +518,14 @@ render_question(Id, Label, Options, Selected) -->
     },
     html([
       p([ b(Label) ]),
-      select([name(Name)], 
+      select([
+          name(Name),
+          style('font-family: "Copperplate", sans-serif; font-size: 15px; font-weight: 300;
+                 color: #222; margin:2px; padding:4px 8px; background:#ddd;
+                 border:none; border-radius:4px; cursor:pointer;'),
+          onmouseover("this.style.background='#ccc'; this.style.color='#000';"),
+          onmouseout("this.style.background='#ddd'; this.style.color='#222';")
+        ],
         \options_html(Options, Selected))
     ]).
 
@@ -356,17 +546,37 @@ recommend_list([H|T]) -->
 %% Add Film Page: if a user is logged in, shows the add-film form.
 %% Otherwise, sends a JavaScript pop-up alert and redirects to the login page.
 add_film_page(_Request) :-
+    BtnStyle = 'font-family: "Copperplate", sans-serif;
+               font-size: 17px; font-weight: 300; color: #222;
+               margin:10px; padding:4px 8px; background:#ddd;
+               border:none; border-radius:4px; text-decoration:none; cursor:pointer;',
+    HoverIn  = "this.style.background='#ccc';",
+    HoverOut = "this.style.background='#ddd';",
+
     (   http_session_data(user(_))
     ->  page_wrapper('Add Film', [
             h1('Add a Film to Your List'),
-            form([action('/addfilm_submit'), method('post')],
-                 [ p([], [label([for(film_id)], 'Film ID (e.g., tt0004972):'),
-                          input([name(film_id), type(text)])]),
-                   p([], input([type(submit), value('Add Film')]))
-                 ])
+            form([action('/addfilm_submit'),method('post')], [
+              p([], [
+                label([for(film_id)], 'Film ID (e.g., tt0004972):'),
+                input([name(film_id), type(text)])
+              ]),
+              p([], input([
+                type(submit), value('Add Film'),
+                style(BtnStyle),
+                onmouseover(HoverIn),
+                onmouseout(HoverOut)
+              ]))
+            ]),
+            p(a([
+                href('/'),
+                style(BtnStyle),
+                onmouseover(HoverIn),
+                onmouseout(HoverOut)
+              ], 'Return Home'))
         ])
     ;   reply_html_page(
-            title('Add Film - Login Required'),
+            title('Add Film – Login Required'),
             [ \current_user_info,
               script([], 'alert("Please login first"); window.location.href = "/login";')
             ])
@@ -390,18 +600,37 @@ add_film_submit(Request) :-
 %% Remove Film Page: If a user is logged in, displays a form to remove a film.
 %% Otherwise, sends a JavaScript alert and redirects to login.
 remove_film_page(_Request) :-
+    BtnStyle = 'font-family: "Copperplate", sans-serif;
+               font-size: 17px; font-weight: 300; color: #222;
+               margin:10px; padding:4px 8px; background:#ddd;
+               border:none; border-radius:4px; text-decoration:none; cursor:pointer;',
+    HoverIn  = "this.style.background='#ccc';",
+    HoverOut = "this.style.background='#ddd';",
+
     (   http_session_data(user(_))
     ->  page_wrapper('Remove Film', [
             h1('Remove Film from Your List'),
-            form([action('/removefilm_submit'), method('post')],
-                 [ p([], [label([for(film_id)], 'Film ID (e.g., tt0004972):'),
-                          input([name(film_id), type(text)])]),
-                   p([], input([type(submit), value('Remove Film')]))
-                 ]),
-            p(a([href('/')], 'Return Home'))
+            form([action('/removefilm_submit'),method('post')], [
+              p([], [
+                label([for(film_id)], 'Film ID (e.g., tt0004972):'),
+                input([name(film_id), type(text)])
+              ]),
+              p([], input([
+                type(submit), value('Remove Film'),
+                style(BtnStyle),
+                onmouseover(HoverIn),
+                onmouseout(HoverOut)
+              ]))
+            ]),
+            p(a([
+                href('/'),
+                style(BtnStyle),
+                onmouseover(HoverIn),
+                onmouseout(HoverOut)
+              ], 'Return Home'))
         ])
     ;   reply_html_page(
-            title('Remove Film - Login Required'),
+            title('Remove Film – Login Required'),
             [ \current_user_info,
               script([], 'alert("Please login first"); window.location.href = "/login";')
             ])
@@ -444,9 +673,16 @@ show_films_page(_Request) :-
         page_wrapper('Your Films', [
             h1('Your Film List'),
             FilmHtml,
-            p(a([href('/')], 'Return Home'))
+            % styled “Return Home” button
+            p(a([ href('/'),
+                   style('font-family: "Copperplate", sans-serif; font-size: 17px; font-weight: 300; color: #222; margin:10px; padding:4px 8px; background:#ddd; border:none; border-radius:4px; text-decoration:none; cursor:pointer;'),
+                   onmouseover("this.style.background='#ccc';"),
+                   onmouseout("this.style.background='#ddd';")
+                 ],
+                 'Return Home'))
         ])
     ).
+
 
 %% This DCG emits a “Remove” link iff there’s a logged‑in user.
 remove_link(FilmId) -->
@@ -512,30 +748,38 @@ all_films_page(Request) :-
 
     % 3. Generate the dropdown for years in descending order
     findall(Y, db(_, year, Y), YearListRaw),
-    sort(YearListRaw, YearList),  % Sort ascending
-    reverse(YearList, YearListDesc),  % Reverse to descending order
+    sort(YearListRaw, YearList),
+    reverse(YearList, YearListDesc),
 
     % 4. Collect the country and genre options
     findall(C, db(_, country, C), CountryListRaw),
     sort(CountryListRaw, CountryList),
-
     findall(G, db(_, genre, G), GenreListRaw),
     sort(GenreListRaw, GenreList),
-
 
     % 5. Decide on result rendering
     ( FilmNames = []
     -> Results = [ \html(p('No films match those criteria.')) ]
-    ; Results = [ \html(ul([style('list-style:none; margin:20px; padding:0; font-family: "Copperplate", sans-serif;')], \film_list_items(FilmNames))) ]
+    ;  Results = [ \html(
+            ul([ style('list-style:none; margin:20px; padding:0; font-family: "Copperplate", sans-serif;') ],
+               \film_list_items(FilmNames)))
+       ]
     ),
 
-    % 6. Build full page
+    % 6. Build full page with styled “Return Home”
     page_wrapper('All Films in Database', [
         h1('Browse All Films'),
-        \search_and_filter_form(QLower, Year, Country, Genre, YearListDesc, CountryList, GenreList),
+        \search_and_filter_form(QLower, Year, Country, Genre,
+                                YearListDesc, CountryList, GenreList),
         \html(Results),
-        p(a([href('/')], 'Return Home'))
+        p(a([ href('/'),
+               style('font-family: "Copperplate", sans-serif; font-size: 17px; font-weight: 300; color: #222; margin:10px; padding:4px 8px; background:#ddd; border:none; border-radius:4px; text-decoration:none; cursor:pointer;'),
+               onmouseover("this.style.background='#ccc';"),
+               onmouseout("this.style.background='#ddd';")
+             ],
+             'Return Home'))
     ]).
+
 
 %% This DCG emits an “Add” link iff there’s a logged‑in user.
 add_link(FilmId) -->
