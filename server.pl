@@ -49,10 +49,7 @@ page_wrapper(Title, Body) :-
           div([class(center_box)], Body)
         ]).
 
-%% Helper: convert an atom to an integer, defaulting to Default on failure
-atom_number_default(Default, Atom, Num) :-
-    catch(atom_number(Atom, N), _, N = Default),
-    Num = N.
+
 
 %% Server launch predicate.
 server(Port) :-
@@ -320,10 +317,10 @@ html(li(H)),
 list_films(T).
 
 
-atom_number_default(Default, Atom, Number) :-
-catch(atom_number(Atom, Number), _, Number = Default).
-
-
+%% Helper: convert an atom to an integer, defaulting to Default on failure
+atom_number_default(Default, Atom, Num) :-
+    catch(atom_number(Atom, N), _, N = Default),
+    Num = N.
 
 %% Gera um <p>label + <select> com as opções
 render_question(Id, Label, Options, Selected) -->
