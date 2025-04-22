@@ -49,9 +49,6 @@ assert(db2('Rita',film,tt0052561)).
 assert(db2('Rita',film,tt1375666)).
 assert(db2('Rita',film,tt0304141)).
 assert(db2('Rita',film,tt0088763)).
-<<<<<<< Updated upstream
 assert(db2(test123,userName,test123)).
 assert(db2(test123,password,test123)).
-=======
 assert(db2('Rita',film,tt1431045)).
->>>>>>> Stashed changes
