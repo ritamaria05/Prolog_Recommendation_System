@@ -44,3 +44,8 @@ assert(db2('Max',film,tt1190080)).
 retractall(db2('Max',film,tt5080556),1).
 retractall(db2('Max',film,tt0015864),1).
 retractall(db2('Max',film,tt0021749),1).
+assert(db2('Rita',film,tt1022603)).
+assert(db2('Rita',film,tt0052561)).
+assert(db2('Rita',film,tt1375666)).
+assert(db2('Rita',film,tt0304141)).
+assert(db2('Rita',film,tt0088763)).

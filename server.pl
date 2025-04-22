@@ -313,8 +313,14 @@ recommend_questions_result(Request) :-
 %% Auxiliar: lista de <li> para cada filme
 list_films([]) --> [].
 list_films([H|T]) -->
-html(li(H)),
-list_films(T).
+  {
+    db(FilmId, name, H),
+    format(string(Link), "https://www.imdb.com/title/~w/", [FilmId])
+  },
+  html(li(
+    a([ href(Link), target('_blank') ], H)
+  )),
+  list_films(T).
 
 
 %% Helper: convert an atom to an integer, defaulting to Default on failure
@@ -376,7 +382,8 @@ add_film_submit(Request) :-
         h1('Add Film'),
         p(Message),
         p(a([href('/')], 'Return Home')),
-        p(a([href('/showfilms')], 'See My Films'))
+        p(a([href('/showfilms')], 'See My Films')),
+        p(a([href('/allfilms')], 'See All Films'))
     ]).
 
 
@@ -466,10 +473,11 @@ list_film_elements([Name|T]) -->
         ( db(FilmId, year, Year)
         -> format(string(YS), " (~w)", [Year])
         ;  YS = ""
-        )
+        ),
+        format(string(Link), "https://www.imdb.com/title/~w/", [FilmId])
     },
     html(p([ 
-        b(Name),        % film title
+        a([href(Link), target('_blank')], b(Name)),        % film title
         span(YS),       % year in brackets
         ' ',            % small spacer
         \remove_link(FilmId)
@@ -561,10 +569,11 @@ film_list_items([Name|T]) -->
         ( db(FilmId, rating, Rating)
         -> true
         ;  Rating = 'Unrated'
-        )
+        ),
+        format(string(Link), "https://www.imdb.com/title/~w/", [FilmId])
     },
     html(li([ style('margin:15px 0; list-style:none;') ], [
-        b(Name),
+        a([href(Link), target('_blank')],b(Name)),
         span(YS),
         span(' – '),
         span(Rating),
