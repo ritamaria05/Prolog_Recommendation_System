@@ -492,7 +492,7 @@ all_films_page(Request) :-
     % 5. Decide on result rendering
     ( FilmNames = []
     -> Results = [ \html(p('No films match those criteria.')) ]
-    ; Results = [ \html(ul([style('list-style:none; margin:10; padding:0; font-family: "Copperplate", sans-serif;')], \film_list_items(FilmNames))) ]
+    ; Results = [ \html(ul([style('list-style:none; margin:20px; padding:0; font-family: "Copperplate", sans-serif;')], \film_list_items(FilmNames))) ]
     ),
 
     % 6. Build full page
@@ -503,19 +503,49 @@ all_films_page(Request) :-
         p(a([href('/')], 'Return Home'))
     ]).
 
-
+%% This DCG emits an “Add” link iff there’s a logged‑in user.
+add_link(FilmId) -->
+    {
+        % only show if someone’s logged in
+        http_session_data(user(_)),
+        % build the URL for your add‑film handler
+        atom_concat('/addfilm_submit?film_id=', FilmId, Href)
+    },
+    html(a([ href(Href),
+            style('font-family: "Copperplate", sans-serif;font-weight: bold;margin-left:20px;color:#007BFF; text-decoration:none; cursor:pointer;'),
+            onmouseover("this.style.color='#0056FF'; this.style.textDecoration='underline';"),
+            onmouseout("this.style.color='#007BFF'; this.style.textDecoration='none';")
+           ],
+           'Add')).
+add_link(_) --> [].  % otherwise, emit nothing
 
 %% film_list_items(+Names)// 
-%% Renders each film as "<Name> – <Rating>" with extra spacing.
+%% Renders each film as “Name (Year) – Rating [Add]” with spacing,
+%% and injects the add_link//1 into the <li>.
 film_list_items([]) --> [].
 film_list_items([Name|T]) -->
     {
-        db(FilmId, name, Name),
-        ( db(FilmId, year, Year) -> format(string(YearStr), " (~w)", [Year]) ; YearStr = "" ),
-        ( db(FilmId, rating, Rating) -> true ; Rating = 'Unrated' )
+        db(FilmId, name,   Name),
+        % optional year string
+        ( db(FilmId, year, Year)
+        -> format(string(YS), " (~w)", [Year])
+        ;  YS = ""
+        ),
+        % optional rating
+        ( db(FilmId, rating, Rating)
+        -> true
+        ;  Rating = 'Unrated'
+        )
     },
-    html(li([ style('margin: 10px 0;') ],
-        [ b(Name), span(YearStr), span(' – '), span(Rating) ])),
+    html(li([ style('margin:15px 0; list-style:none;') ], [
+        b(Name),
+        span(YS),
+        span(' – '),
+        span(Rating),
+        % space then maybe an “Add” link
+        ' ',
+        \add_link(FilmId)
+    ])),
     film_list_items(T).
 
 
