@@ -434,20 +434,39 @@ show_films_page(_Request) :-
         ])
     ).
 
-
+%% This DCG emits a “Remove” link iff there’s a logged‑in user.
+remove_link(FilmId) -->
+    {
+        http_session_data(user(_)),  % only if logged in
+        atom_concat('/removefilm_submit?film_id=', FilmId, Href)
+    },
+    html(a([ href(Href),
+            style('font-family: "Copperplate", sans-serif; font-weight: bold; margin-left:20px; color:#007BFF; text-decoration:none; cursor:pointer;'),
+            onmouseover("this.style.color='#0056FF'; this.style.textDecoration='underline';"),
+            onmouseout("this.style.color='#007BFF'; this.style.textDecoration='none';")
+          ], 'Remove')).
+remove_link(_) --> [].  % otherwise, emit nothing
 
 %% New helper that returns a chunk of HTML based on the list
 films_html([], p('No films added.')).
 films_html(Films, \list_film_elements(Films)).
 
-%% Helper to render list items with year in brackets
+%% Helper to render your films list with a Remove link
 list_film_elements([]) --> [].
 list_film_elements([Name|T]) -->
     {
         db(FilmId, name, Name),
-        ( db(FilmId, year, Year) -> format(string(YearStr), " (~w)", [Year]) ; YearStr = "" )
+        ( db(FilmId, year, Year)
+        -> format(string(YS), " (~w)", [Year])
+        ;  YS = ""
+        )
     },
-    html(p([b(Name), span(YearStr)])),
+    html(p([ 
+        b(Name),        % film title
+        span(YS),       % year in brackets
+        ' ',            % small spacer
+        \remove_link(FilmId)
+    ])),
     list_film_elements(T).
 
 
