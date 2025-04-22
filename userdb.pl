@@ -40,3 +40,7 @@ assert(db2('Max',film,tt0416449)).
 assert(db2('Max',film,tt1392190)).
 assert(db2('Max',film,tt5080556)).
 assert(db2('Max',film,tt8579674)).
+assert(db2('Max',film,tt1190080)).
+retractall(db2('Max',film,tt5080556),1).
+retractall(db2('Max',film,tt0015864),1).
+retractall(db2('Max',film,tt0021749),1).
