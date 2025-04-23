@@ -9,7 +9,6 @@
 :- ensure_loaded('users.pl').  % User management and movie DB
 :- use_module(library(http/http_files)). % Serve static files
 :- ensure_loaded('recommend.pl'). % Question-based recommendations
-:- ensure_loaded('rating.pl').
 
 % Static file handlers
 :- http_handler('/style.css', http_reply_file('style.css', []), []).
@@ -29,9 +28,6 @@
 :- http_handler(root(addfilm), add_film_page, []).
 :- http_handler(root(addfilm_submit), add_film_submit, []).
 :- http_handler(root(showfilms), show_films_page, []).
-:- http_handler(root(showfilms), show_films_page, []).
-:- http_handler(root(rate), rate_page, []).
-:- http_handler(root(submit_rating), submit_rating_handler, []).
 :- http_handler(root(allfilms), all_films_page, []).
 :- http_handler(root(removefilm), remove_film_page, []).
 :- http_handler(root(removefilm_submit), remove_film_submit, []).
@@ -698,11 +694,6 @@ remove_link(_) --> [].  % otherwise, emit nothing
 
 
 
-
-
-
-
-
 %% New helper that returns a chunk of HTML based on the list
 films_html([], p('No films added.')).
 films_html(Films, \list_film_elements(Films)).
@@ -724,76 +715,7 @@ list_film_elements([Name|T]) -->
     ])),
     list_film_elements(T).
 
-% 1) Handler para página de avaliação
-:- http_handler(root(rate), rate_page, []).
 
-rate_page(Request) :-
-    http_parameters(Request, [ film_id(FilmID, []) ]),
-    (   http_session_data(user(UserID))
-    ->  true
-    ;   % redireciona para login se não estiver autenticado
-        reply_html_page(
-          title('Rate – Login Required'),
-          [ \current_user_info,
-            script([], 'alert("Por favor, faça login."); window.location.href = "/login";')
-          ]),
-        !
-    ),
-    % Obter nome do filme
-    db(FilmID, name, FilmName),
-    % Tentar carregar avaliação existente
-    (   get_rating(UserID, FilmID, StarsAtom, ReviewAtom)
-    ->  DefaultStars = StarsAtom, DefaultReview = ReviewAtom
-    ;   DefaultStars = '3',     % padrão neutro
-        DefaultReview = ''
-    ),
-    % Renderizar formulário
-    page_wrapper('Rate Film', [
-      h1('Avaliar: ' + FilmName),
-      form([ action('/rate_submit'), method('POST') ], [
-        % campo oculto com FilmID
-        input([type(hidden), name(film_id), value(FilmID)]),
-        % Seleção de estrelas
-        p([], [
-          label([for(rating)], 'Stars:'),
-          select([name(rating), id(rating)], [
-            option([value('1'), (DefaultStars=='1'->selected(true);true)], '1'),
-            option([value('2'), (DefaultStars=='2'->selected(true);true)], '2'),
-            option([value('3'), (DefaultStars=='3'->selected(true);true)], '3'),
-            option([value('4'), (DefaultStars=='4'->selected(true);true)], '4'),
-            option([value('5'), (DefaultStars=='5'->selected(true);true)], '5')
-          ])
-        ]),
-        % Caixa de texto para review
-        p([], [
-          label([for(review)], 'Review:'),
-          textarea([name(review), id(review), rows(5), cols(60)], DefaultReview)
-        ]),
-        % Botão de submissão
-        p([], input([type(submit), value('Salvar Avaliação')]))
-      ]),
-      p(a([ href('/showfilms') ], 'Voltar a “See My Films”'))
-    ]).
-
-% 2) Handler para processar submissão
-:- http_handler(root(rate_submit), rate_submit, []).
-
-rate_submit(Request) :-
-    http_parameters(Request, [
-      film_id(FilmID, []),
-      rating(RatingAtom, []),
-      review(ReviewAtom, [])
-    ]),
-    http_session_data(user(UserID)),
-    % Atualiza/insera no DB
-    set_rating(UserID, FilmID, RatingAtom, ReviewAtom),
-    % Confirmação
-    page_wrapper('Rating Saved', [
-      h1('Obrigado pela avaliação!'),
-      p(['Você avaliou ', b(FilmID), ' com ', b(RatingAtom), ' estrelas.']),
-      p(a([ href('/showfilms') ], 'Veja minhas avaliações')),
-      p(a([ href('/') ], 'Página Inicial'))
-    ]).
 
 
 %% all_films_page(+Request)
