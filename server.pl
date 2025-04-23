@@ -451,7 +451,7 @@ recommend_questions_result(Request) :-
                             'No matches found — try again with different answers.') ]
         ;   FilmsHtml = [
                 ul([ style('list-style:none; margin:20px 0; padding:0; font-family: "Copperplate", sans-serif;') ],
-                   \styled_film_links(Films))
+                   \list_films(Films))
             ]
         ),
 
@@ -474,35 +474,20 @@ recommend_questions_result(Request) :-
         ])
     ).
 
-% Helper for consistent film links (same as used in show_films_page)
-styled_film_links([]) --> [].
-styled_film_links([H|T]) -->
-  {
-    db(FilmId, name, H),
-    format(string(Link), "https://www.imdb.com/title/~w/", [FilmId]),
-    BtnStyle = 'list-style:none; margin:20px; padding:0; font-family: "Copperplate", sans-serif;border:15px;',
-    LiStyle = 'margin-bottom:7px;'  % Adjust spacing here
-  },
-  html(li([style(LiStyle)],
-    a([ href(Link),
-        target('_blank'),
-        style(BtnStyle)
-      ], H)
-  )),
-  styled_film_links(T).
-
-
-
 %% Auxiliar: lista de <li> para cada filme
 list_films([]) --> [].
 list_films([H|T]) -->
   {
     db(FilmId, name, H),
-    format(string(Link), "https://www.imdb.com/title/~w/", [FilmId])
+    db(FilmId, year, Year),
+    format(string(ImdbLink), "https://www.imdb.com/title/~w/", [FilmId]),
+    format(string(FilmLabel), "~w (~w)", [H, Year]),
+    LiStyle = 'margin-bottom:16px; font-family: "Copperplate", sans-serif;'
   },
-  html(li(
-    a([ href(Link), target('_blank') ], H)
-  )),
+  html(li([style(LiStyle)], [
+    a([ href(ImdbLink), target('_blank') ], FilmLabel),
+    \add_link(FilmId)
+  ])),
   list_films(T).
 
 

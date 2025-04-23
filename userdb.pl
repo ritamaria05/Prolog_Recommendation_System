@@ -78,3 +78,4 @@ assert(db2(test123,userName,test123)).
 assert(db2(test123,password,test123)).
 assert(db2('Rita',film,tt1431045)).
 
+assert(db2('Max',film,tt5080556)).
