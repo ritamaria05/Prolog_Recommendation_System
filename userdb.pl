@@ -40,7 +40,6 @@ assert(db2('Max',film,tt0416449)).
 assert(db2('Max',film,tt1392190)).
 assert(db2('Max',film,tt5080556)).
 assert(db2('Max',film,tt8579674)).
-<<<<<<< Updated upstream
 assert(db2('Max',film,tt1190080)).
 retractall(db2('Max',film,tt5080556),1).
 retractall(db2('Max',film,tt0015864),1).
@@ -53,28 +52,6 @@ assert(db2('Rita',film,tt0088763)).
 assert(db2(test123,userName,test123)).
 assert(db2(test123,password,test123)).
 assert(db2('Rita',film,tt1431045)).
-=======
-<<<<<<< HEAD
-assert(db2('Max',film,tt1190080)).
-retractall(db2('Max',film,tt5080556),1).
-retractall(db2('Max',film,tt0015864),1).
-retractall(db2('Max',film,tt0021749),1).
-assert(db2('Rita',film,tt1022603)).
-assert(db2('Rita',film,tt0052561)).
-assert(db2('Rita',film,tt1375666)).
-assert(db2('Rita',film,tt0304141)).
-assert(db2('Rita',film,tt0088763)).
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-assert(db2(test123,userName,test123)).
-assert(db2(test123,password,test123)).
-=======
-assert(db2('Rita',film,tt1431045)).
->>>>>>> Stashed changes
-=======
-assert(db2('Rita',film,tt1431045)).
->>>>>>> Stashed changes
-=======
 assert(db2('Max',film,tt1190080)).
 retractall(db2('Max',film,tt5080556),1).
 retractall(db2('Max',film,tt0015864),1).
@@ -87,5 +64,17 @@ assert(db2('Rita',film,tt0088763)).
 assert(db2(test123,userName,test123)).
 assert(db2(test123,password,test123)).
 assert(db2('Rita',film,tt1431045)).
->>>>>>> 71664805547b9c843ef5b41922392c03878bae4f
->>>>>>> Stashed changes
+assert(db2('Rita',film,tt1431045)).
+assert(db2('Max',film,tt1190080)).
+retractall(db2('Max',film,tt5080556),1).
+retractall(db2('Max',film,tt0015864),1).
+retractall(db2('Max',film,tt0021749),1).
+assert(db2('Rita',film,tt1022603)).
+assert(db2('Rita',film,tt0052561)).
+assert(db2('Rita',film,tt1375666)).
+assert(db2('Rita',film,tt0304141)).
+assert(db2('Rita',film,tt0088763)).
+assert(db2(test123,userName,test123)).
+assert(db2(test123,password,test123)).
+assert(db2('Rita',film,tt1431045)).
+
