@@ -79,3 +79,8 @@ assert(db2(test123,password,test123)).
 assert(db2('Rita',film,tt1431045)).
 
 assert(db2('Max',film,tt5080556)).
+assert(db2(test101,userName,test101)).
+assert(db2(test101,password,test101)).
+assert(db2(test101,film,tt0389557)).
+retractall(db2(test101,film,tt0389557),1).
+assert(db2(test101,film,tt0058777)).

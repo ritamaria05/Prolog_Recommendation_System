@@ -422,73 +422,83 @@ recommend_questions_form(_Request) :-
     
 %% Recommendation based on specific questions (RESULT)
 recommend_questions_result(Request) :-
-    % 1. Get user session or none
-    (   http_session_data(user(UserID)) -> true ; UserID = none ),
+    % 1. Get session user or none
+    ( http_session_data(user(UserID)) -> true ; UserID = none ),
 
-    % 2. If not logged in, alert and redirect
-    (   UserID == none
-    ->  reply_html_page(
-            title('Recommendation – Login Required'),
-            [ \current_user_info,
-              script([], 'alert("Please login first"); window.location.href = "/login";')
-            ]
-        )
-    ;   % 3. Logged in: get answers and find films
-        http_parameters(Request, [
-            ans1(A1, [optional(true), default('0')]),
-            ans2(A2, [optional(true), default('0')]),
-            ans3(A3, [optional(true), default('0')]),
-            ans4(A4, [optional(true), default('0')]),
-            ans5(A5, [optional(true), default('0')])
-        ]),
-        maplist(atom_number_default(0), [A1,A2,A3,A4,A5], [N1,N2,N3,N4,N5]),
-        findall(F, recommend(N1,N2,N3,N4,N5,F), Raw),
-        sort(Raw, Films),
+    % 2. If not logged in, pop up + redirect
+    ( UserID == none ->
+        reply_html_page(
+          title('Recommendation – Login Required'),
+          [ \current_user_info,
+            script([], 'alert("Please login first"); window.location.href = "/login";')
+          ])
+    ; % 3. Logged in: read answers & compute
+      http_parameters(Request, [
+        ans1(A1,[optional(true),default('0')]),
+        ans2(A2,[optional(true),default('0')]),
+        ans3(A3,[optional(true),default('0')]),
+        ans4(A4,[optional(true),default('0')]),
+        ans5(A5,[optional(true),default('0')])
+      ]),
+      maplist(atom_number_default(0), [A1,A2,A3,A4,A5], [N1,N2,N3,N4,N5]),
+      findall(F, recommend(N1,N2,N3,N4,N5,F), Raw),
+      sort(Raw, Films),
 
-        % 4. Styled film list HTML
-        (   Films == []
-        ->  FilmsHtml = [ p(style('font-family: "Copperplate", sans-serif; font-size: 16px; color: #444;'),
-                            'No matches found — try again with different answers.') ]
-        ;   FilmsHtml = [
-                ul([ style('list-style:none; margin:20px 0; padding:0; font-family: "Copperplate", sans-serif;') ],
-                   \list_films(Films))
-            ]
-        ),
+      % 4. Build a single UL with a sub‐DCG call to list_films//1
+      ( Films = [] ->
+          FilmsBlock = [ p(style('font-family:"Copperplate",sans-serif;font-size:16px;color:#444;'),
+                            'No matches found — try again with different answers.')
+                       ]
+      ; FilmsBlock = [ ul([ style('list-style:none;margin:20px 0;padding:0;') ],
+                          \list_films(Films))
+                     ]
+      ),
 
-        % 5. Button styles
-        BtnStyle = 'font-family: "Copperplate", sans-serif; font-size: 17px; font-weight: 300; color: #222; margin:10px; padding:4px 8px; background:#ddd; border:none; border-radius:4px; text-decoration:none; cursor:pointer;',
-        HoverIn  = "this.style.background='#ccc';",
-        HoverOut = "this.style.background='#ddd';",
+      % 5. Button styling
+      BtnStyle = 'font-family:"Copperplate",sans-serif;font-size:17px;font-weight:300;color:#222;
+                  margin:10px;padding:4px 8px;background:#ddd;border:none;border-radius:4px;
+                  text-decoration:none;cursor:pointer;',
+      HoverIn  = "this.style.background='#ccc';",
+      HoverOut = "this.style.background='#ddd';",
 
-        % 6. Render full page
-        page_wrapper('Your Movie Recommendations', [
-            h1([style('font-family: "Copperplate", sans-serif; color:#222;')],
-               'We recommend the following movies:'),
-            div([ class(container) ], FilmsHtml),
-            p(a([ href('/'),
-                  style(BtnStyle),
-                  onmouseover(HoverIn),
-                  onmouseout(HoverOut)
-                ],
-                'Return Home'))
-        ])
+      % 6. Finally render
+      page_wrapper('Your Movie Recommendations', [
+          h1([style('font-family:"Copperplate",sans-serif;color:#222;')],
+             'We recommend the following movies:'),
+          div([ class(container) ], FilmsBlock),
+          p(a([ href('/'),
+                 style(BtnStyle),
+                 onmouseover(HoverIn),
+                 onmouseout(HoverOut)
+               ], 'Return Home'))
+      ])
     ).
 
+
 %% Auxiliar: lista de <li> para cada filme
+%% list_films(+Names)// 
+%% Renders: <li><b>Name</b> (Year) [Add]</li>
 list_films([]) --> [].
-list_films([H|T]) -->
+list_films([Title|T]) -->
   {
-    db(FilmId, name, H),
-    db(FilmId, year, Year),
-    format(string(ImdbLink), "https://www.imdb.com/title/~w/", [FilmId]),
-    format(string(FilmLabel), "~w (~w)", [H, Year]),
-    LiStyle = 'margin-bottom:16px; font-family: "Copperplate", sans-serif;'
+    % grab its ID and year
+    db(Id, name,  Title),
+    db(Id, year,  Year),
+    % build the hrefs and display strings
+    format(atom(ImdbLink),    "https://www.imdb.com/title/~w/", [Id]),
+    format(atom(YearStr),     "(~w)", [Year]),
+    LiStyle = 'margin-bottom:16px; list-style:none; font-family:"Copperplate",sans-serif;'
   },
-  html(li([style(LiStyle)], [
-    a([ href(ImdbLink), target('_blank') ], FilmLabel),
-    \add_link(FilmId)
+  html(li([ style(LiStyle) ], [
+    % title as a link
+    a([ href(ImdbLink), target('_blank') ], b(Title)),
+    span([], ' '),          % small spacer
+    span([], YearStr),      % year in brackets
+    span([], ' '),          % small spacer
+    \add_link(Id)           % your existing Add-link DCG
   ])),
   list_films(T).
+
 
 
 %% Helper: convert an atom to an integer, defaulting to Default on failure
