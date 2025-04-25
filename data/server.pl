@@ -785,34 +785,61 @@ rate_film_submit(Request) :-
     p(a([href('/')],'Return Home'))
   ]).
 
+  get_movie_title(MovieID, Title) :-
+    db(MovieID, name, Title), !.
+get_movie_title(_, 'Unknown Title').
+
   show_ratings_page(_Request) :-
-      ( http_session_data(user(User)) -> true ; User = none ),
-      ( User == none ->
-          page_wrapper(title('Login Required'),
-              [ script([], 'alert("Please login first"); window.location="/login";') ])
-      ; all_user_ratings(User,Ratings),
+    ( http_session_data(user(User)) -> true ; User = none ),
+    ( User == none ->
+        % sem sessão, redireciona para login
+        page_wrapper('Login Required', [
+          script([], 'alert("Please login first"); window.location="/login";')
+        ])
+    ;
+        % utilizador logado → obter ratings
+        all_user_ratings(User, Ratings),
+
+        % 1. Decide o bloco de ratings
+        ( Ratings = [] ->
+            RatingsBlock = [ p('No ratings yet.') ]
+        ;
+            RatingsBlock = [ ul([ style('list-style:none;margin:20px 0;padding:0;') ],\rating_list_items(Ratings))]
+        ),
+
+        % 2. Renderiza tudo correctamente
         page_wrapper('My Ratings', [
           h1('My Ratings'),
-          ( Ratings = [] ->
-              p('No ratings yet.')
-          ;  ul(\rating_list_items(Ratings))
-          ),
-          p(a([href('/')],'Return Home'),' | ',a([href('/showfilms')],'See My Films'))
+          % insere o bloco já construído
+          div([class('ratings-list')], RatingsBlock),
+          % link de voltar com sintaxe correcta
+          p([ a([href('/')], 'Return Home'),
+              ' | ',
+              a([href('/showfilms')], 'See My Films')
+            ])
         ])
-      ).
-  
-  rating_list_items([]) --> [].
-  rating_list_items([rating(_,FilmId,Stars,Review,TS)|T]) -->
-      {
-        db(FilmId,name,Title),
-        format_time(string(DT), '%Y-%m-%d %H:%M', TS)
-      },
-      html(li([
-        b(Title),' — ',Stars,' stars',' (',DT,')',
-        ( Review \== '' -> [br, em(Review)] ; [])
-      ])),
-      rating_list_items(T).
-  
+    ).
+rating_list_items([]) --> [].
+rating_list_items([rating(_, MovieID, Stars, Review, Timestamp)|Rest]) -->
+    {
+        get_movie_title(MovieID, Title),
+        format_time(atom(DateText), '%Y-%m-%d %H:%M', Timestamp),
+        ( Review \== '' ->
+            ReviewBlock = [ div([class(review)], [ em(Review) ]) ]
+        ;
+            ReviewBlock = []
+        ),
+        RatingStars = span([class(stars)], [Stars, '★'])
+    },
+    html(li([class(rating_item)], [
+        h3(Title),
+        div([class('details')], [
+            RatingStars,
+            span([class('date')], [' on ', DateText])
+        ])
+        | ReviewBlock
+    ])),
+    rating_list_items(Rest).
 
 %% all_films_page(+Request)
 %% Displays all films with a title‐search box and (–) filters removed for brevity.
