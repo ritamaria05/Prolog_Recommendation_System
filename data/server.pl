@@ -116,6 +116,11 @@ home_page(_Request) :-
                                   onmouseover(HoverIn),
                                   onmouseout(HoverOut)
                                 ], 'Show Your Films')),
+        p([class(menu_item)], a([ href('/myratings'),
+                                  style(BtnStyle),
+                                  onmouseover(HoverIn),
+                                  onmouseout(HoverOut)
+                                ], 'Show Your Ratings')),
         p([class(menu_item)], a([ href('/allfilms'),
                                   style(BtnStyle),
                                   onmouseover(HoverIn),
