@@ -9,7 +9,8 @@
 :- ensure_loaded('users.pl').  % User management and movie DB
 :- use_module(library(http/http_files)). % Serve static files
 :- ensure_loaded('recommend.pl'). % Question-based recommendations
-
+:- use_module(rating).            % novo
+:- initialization(init_ratings_db).
 % Static file handlers
 :- http_handler('/style.css', http_reply_file('style.css', []), []).
 :- http_handler('/mascote.jpg', http_reply_file('mascote.jpg', []), []).
@@ -28,6 +29,9 @@
 :- http_handler(root(addfilm), add_film_page, []).
 :- http_handler(root(addfilm_submit), add_film_submit, []).
 :- http_handler(root(showfilms), show_films_page, []).
+:- http_handler(root(ratefilm),      rate_film_page,      []).   % GET
+:- http_handler(root(ratefilm_submit), rate_film_submit,   []).   % POST
+:- http_handler(root(myratings),     show_ratings_page,      []).   % GET lista de ratings
 :- http_handler(root(allfilms), all_films_page, []).
 :- http_handler(root(removefilm), remove_film_page, []).
 :- http_handler(root(removefilm_submit), remove_film_submit, []).
@@ -692,6 +696,21 @@ remove_link(FilmId) -->
           ], 'Remove')).
 remove_link(_) --> [].  % otherwise, emit nothing
 
+%% Rate link só se o user estiver em sessão.
+rate_link(FilmId) -->
+  {
+      http_session_data(user(_)),                         % só se logged-in
+      format(atom(Href), '/ratefilm?film_id=~w', [FilmId]) % monta href
+  },
+  html(a(
+      [ href(Href),
+        style('font-family: "Copperplate", sans-serif; font-size:20px; color:#e67e22; text-decoration:none; cursor:pointer;'),
+        onmouseover("this.style.color='#d35400'; this.style.textDecoration='underline';"),
+        onmouseout("this.style.color='#e67e22'; this.style.textDecoration='none';")
+      ],
+      'Rate'
+  )).
+rate_link(_) --> [].
 
 
 %% New helper that returns a chunk of HTML based on the list
@@ -711,12 +730,89 @@ list_film_elements([Name|T]) -->
         a([href(Link), target('_blank')], b(Name)),        % film title
         span(YS),       % year in brackets
         ' ',            % small spacer
-        \remove_link(FilmId)
+        \remove_link(FilmId),
+        \rate_link(FilmId)
     ])),
     list_film_elements(T).
 
+%% GET: mostra o formulário de rating
+rate_film_page(Request) :-
+  http_session_data(user(_User)),
+  http_parameters(Request, [ film_id(FilmId,[]) ]),
+  ( db(FilmId,name,Title) -> true ; Title = FilmId ),
+  page_wrapper(['Rate ',Title], [
+    h1(['Rate ',Title]),
+    form([action('/ratefilm_submit'),method('post')], [
+      input([type(hidden),name(film_id),value(FilmId)]),
+      p([ label([for(stars)], 'Stars:'),
+          select([name(stars)],
+                 [ option([value(0)],'0'),
+                   option([value(1)],'1'),
+                   option([value(2)],'2'),
+                   option([value(3)],'3'),
+                   option([value(4)],'4'),
+                   option([value(5)],'5')
+                 ])
+        ]),
+      p([ label([for(review)], 'Review (opcional):') ]),
+      p([ textarea([name(review),rows(5),cols(50)], '') ]),
+      p([ input([type(submit),value('Submit'),
+                 style('font-family:Copperplate; padding:4px 8px;') ]) ])
+    ]),
+    p([
+      a([href('/showfilms')], 'See My Films'),
+      text(' | '),
+      a([href('/')],         'Return Home')
+    ])
+    
+  ]).
 
+%% POST: recebe a avaliação e guarda
+rate_film_submit(Request) :-
+  http_session_data(user(User)),
+  http_parameters(Request, [
+    film_id(FilmId,[]),
+    stars(StarsAtom,[]),
+    review(Review,[optional(true),default('')])
+  ]),
+  atom_number(StarsAtom,Stars),
+  get_time(TS), stamp_date_time(TS,DT,'UTC'),
+  set_rating(User,FilmId,Stars,Review,DT),
+  page_wrapper('Rating submitted!', [
+    h1('Rating submitted!'),
+    p(a([href('/showfilms')],'See My Films')),
+    p(a([href('/myratings')],'See My Ratings')),
+    p(a([href('/')],'Return Home'))
+  ]).
 
+  show_ratings_page(_Request) :-
+      ( http_session_data(user(User)) -> true ; User = none ),
+      ( User == none ->
+          page_wrapper(title('Login Required'),
+              [ script([], 'alert("Please login first"); window.location="/login";') ])
+      ; all_user_ratings(User,Ratings),
+        page_wrapper('My Ratings', [
+          h1('My Ratings'),
+          ( Ratings = [] ->
+              p('No ratings yet.')
+          ;  ul(\rating_list_items(Ratings))
+          ),
+          p(a([href('/')],'Return Home'),' | ',a([href('/showfilms')],'See My Films'))
+        ])
+      ).
+  
+  rating_list_items([]) --> [].
+  rating_list_items([rating(_,FilmId,Stars,Review,TS)|T]) -->
+      {
+        db(FilmId,name,Title),
+        format_time(string(DT), '%Y-%m-%d %H:%M', TS)
+      },
+      html(li([
+        b(Title),' — ',Stars,' stars',' (',DT,')',
+        ( Review \== '' -> [br, em(Review)] ; [])
+      ])),
+      rating_list_items(T).
+  
 
 %% all_films_page(+Request)
 %% Displays all films with a title‐search box and (–) filters removed for brevity.
