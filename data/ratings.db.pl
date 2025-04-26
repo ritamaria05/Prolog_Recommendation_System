@@ -3,4 +3,10 @@ rating('Rita', tt0052561, 4, 'Oldie Goldie', date(2025, 4, 25, 16, 0, 0.88887810
 rating('Rita', tt1022603, 4, 'Bue fixe!!!', date(2025, 4, 25, 16, 0, 18.215291976, 0, 'UTC', -)).
 rating('Rita', tt1431045, 3, 'Goated', date(2025, 4, 25, 16, 15, 3.791135072, 0, 'UTC', -)).
 rating('Rita', tt0468569, 5, 'absolute cinema', date(2025, 4, 25, 16, 27, 4.985867977, 0, 'UTC', -)).
+<<<<<<< HEAD
 rating('Rita', tt0088763, 5, nvekjnsodewo, date(2025, 4, 25, 17, 6, 12.868751049, 0, 'UTC', -)).
+=======
+rating('Max', tt1253863, 5, 'Very cool film.', date(2025, 4, 25, 18, 22, 22.204458951, 0, 'UTC', -)).
+rating('Max', tt8579674, 4, '', date(2025, 4, 25, 18, 22, 42.476927995, 0, 'UTC', -)).
+
+>>>>>>> ada4ed87c798e5eca2722dd98253cc53ba0f9c02
