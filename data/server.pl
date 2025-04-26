@@ -6,6 +6,7 @@
 :- use_module(library(http/http_parameters)).
 :- use_module(library(http/html_write)).
 :- use_module(library(http/http_client)).
+:- use_module(library(date)).
 :- ensure_loaded('users.pl').  % User management and movie DB
 :- use_module(library(http/http_files)). % Serve static files
 :- ensure_loaded('recommend.pl'). % Question-based recommendations
@@ -781,7 +782,7 @@ rate_film_submit(Request) :-
     review(Review,[optional(true),default('')])
   ]),
   atom_number(StarsAtom,Stars),
-  get_time(TS), stamp_date_time(TS,DT,'UTC'),
+  get_time(TS), stamp_date_time(TS,DT,local),
   set_rating(User,FilmId,Stars,Review,DT),
   page_wrapper('Rating submitted!', [
     h1('Rating submitted!'),
@@ -804,12 +805,13 @@ get_movie_title(_, 'Unknown Title').
     ;
         % utilizador logado → obter ratings
         all_user_ratings(User, Ratings),
+        filter_latest_ratings(Ratings, LatestRatings),
 
         % 1. Decide o bloco de ratings
-        ( Ratings = [] ->
+        ( LatestRatings = [] ->
             RatingsBlock = [ p('No ratings yet.') ]
         ;
-            RatingsBlock = [ ul([ style('list-style:none;margin:20px 0;padding:0;') ],\rating_list_items(Ratings))]
+            RatingsBlock = [ ul([ style('list-style:none;margin:20px 0;padding:0;') ],\rating_list_items(LatestRatings))]
         ),
 
         % 2. Renderiza tudo correctamente
@@ -825,26 +827,67 @@ get_movie_title(_, 'Unknown Title').
         ])
     ).
 rating_list_items([]) --> [].
-rating_list_items([rating(_, MovieID, Stars, Review, Timestamp)|Rest]) -->
-    {
-        get_movie_title(MovieID, Title),
-        format_time(atom(DateText), '%Y-%m-%d %H:%M', Timestamp),
-        ( Review \== '' ->
-            ReviewBlock = [ div([class(review)], [ em(Review) ]) ]
-        ;
-            ReviewBlock = []
-        ),
-        RatingStars = span([class(stars)], [Stars, '★'])
-    },
-    html(li([class(rating_item)], [
-        h3(Title),
-        div([class('details')], [
-            RatingStars,
-            span([class('date')], [' on ', DateText])
-        ])
-        | ReviewBlock
-    ])),
-    rating_list_items(Rest).
+rating_list_items([rating(_,MovieID,Stars,Review,DT_utc)|Rest]) -->
+  {
+    % converte o termo UTC em segundos
+    date_time_stamp(DT_utc, TS),
+    % reconstrói um termo date–time em hora local
+    stamp_date_time(TS, DT_local, local),
+    % formata usando a hora local
+    format_time(atom(DateText), '%Y-%m-%d %H:%M', DT_local),
+    get_movie_title(MovieID, Title),
+    ( Review \== '' ->
+        ReviewBlock = [ div([class(review)], [ em(Review) ]) ]
+    ; ReviewBlock = [] ),
+    RatingStars = span([class(stars)], [Stars, '★'])
+  },
+  html(li([class(rating_item)], [
+    h3(Title),
+    div([class('details')], [
+      RatingStars,
+      span([class('date')], [' on ', DateText])
+    ])
+    | ReviewBlock
+  ])),
+  rating_list_items(Rest).
+
+% Filtra para manter apenas o rating mais recente de cada filme
+filter_latest_ratings(Ratings, LatestRatings) :-
+  group_by_movie(Ratings, Grouped),
+  pick_latest_from_group(Grouped, LatestRatings).
+
+% Agrupa os ratings pelo MovieID
+group_by_movie(Ratings, Grouped) :-
+  findall(MovieID, member(rating(_, MovieID, _, _, _), Ratings), MoviesDup),
+  sort(MoviesDup, Movies),
+  findall(Group, (
+      member(MovieID, Movies),
+      findall(rating(User, MovieID, Stars, Review, Timestamp),
+              member(rating(User, MovieID, Stars, Review, Timestamp), Ratings),
+              Group)
+  ), Grouped).
+
+% Para cada grupo escolhe o rating mais recente
+pick_latest_from_group([], []).
+pick_latest_from_group([RatingsList|Rest], [MostRecent|FilteredRest]) :-
+  most_recent_rating(RatingsList, MostRecent),
+  pick_latest_from_group(Rest, FilteredRest).
+
+
+most_recent_rating([R], R).
+most_recent_rating([R1, R2 | Rest], MostRecent) :-
+    % só precisamos extrair o Timestamp de cada rating, daí o uso de '_' nos outros campos
+    R1 = rating(_, _, _, _, DT1),
+    R2 = rating(_, _, _, _, DT2),
+    date_time_stamp(DT1, TS1),
+    date_time_stamp(DT2, TS2),
+    ( TS1 >= TS2 ->
+        most_recent_rating([R1 | Rest], MostRecent)
+    ;
+        most_recent_rating([R2 | Rest], MostRecent)
+    ).
+
+
 
 %% all_films_page(+Request)
 %% Displays all films with a title‐search box and (–) filters removed for brevity.
