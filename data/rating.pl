@@ -12,8 +12,8 @@
 
 %% Inicializa: se existir um ficheiro com ratings anteriores, carrega-o
 init_ratings_db :-
-    ( exists_file('ratings.db.pl')
-    -> consult('ratings.db.pl')
+    ( exists_file('ratingsdb.pl')
+    -> consult('ratingsdb.pl')
     ;  true ).
 
 %% Insere sempre um novo fact; o mais recente "ganha"
@@ -29,7 +29,7 @@ all_user_ratings(User, Ratings) :-
 
 %% Grava em disco todos os facts rating/5
 save_ratings_db :-
-    open('ratings.db.pl', write, Out),
+    open('ratingsdb.pl', write, Out),
     forall(rating(U,M,S,Rev,TS),
            portray_clause(Out, rating(U,M,S,Rev,TS))),
     close(Out).
