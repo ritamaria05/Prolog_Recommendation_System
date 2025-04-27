@@ -710,7 +710,7 @@ rate_link(FilmId) -->
   },
   html(a(
       [ href(Href),
-        style('font-family: "Copperplate", sans-serif; font-size:20px; color:#e67e22; text-decoration:none; cursor:pointer;'),
+        style('font-family: "Copperplate", sans-serif; font-weight: bold; margin-left:20px; color:#e67e22; text-decoration:none; cursor:pointer;'),
         onmouseover("this.style.color='#d35400'; this.style.textDecoration='underline';"),
         onmouseout("this.style.color='#e67e22'; this.style.textDecoration='none';")
       ],
@@ -743,113 +743,212 @@ list_film_elements([Name|T]) -->
 
 %% GET: mostra o formulário de rating
 rate_film_page(Request) :-
-  http_session_data(user(_User)),
-  http_parameters(Request, [ film_id(FilmId,[]) ]),
-  ( db(FilmId,name,Title) -> true ; Title = FilmId ),
-  page_wrapper(['Rate ',Title], [
-    h1(['Rate ',Title]),
-    form([action('/ratefilm_submit'),method('post')], [
-      input([type(hidden),name(film_id),value(FilmId)]),
-      p([ label([for(stars)], 'Stars:'),
-          select([name(stars)],
-                 [ option([value(0)],'0'),
-                   option([value(1)],'1'),
-                   option([value(2)],'2'),
-                   option([value(3)],'3'),
-                   option([value(4)],'4'),
-                   option([value(5)],'5')
-                 ])
+    http_session_data(user(_User)),
+    http_parameters(Request, [ film_id(FilmId,[]) ]),
+    ( db(FilmId,name,Title) -> true ; Title = FilmId ),
+
+    % shared button style
+    BtnStyle = 'font-family: "Copperplate", sans-serif; font-size: 17px; font-weight: 300; color: #222; margin:10px; padding:4px 8px; background:#ddd; border:none; border-radius:4px; text-decoration:none; cursor:pointer;',
+    HoverIn  = "this.style.background='#ccc';",
+    HoverOut = "this.style.background='#ddd';",
+
+    % shared select style
+    SelStyle = 'font-family: "Copperplate", sans-serif; font-size: 15px; font-weight: 300; color: #222; margin:2px; padding:4px 8px; background:#ddd; border:none; border-radius:4px; cursor:pointer;',
+
+    page_wrapper(['Rate ',Title], [
+        h1(['Rate ',Title]),
+        form([action('/ratefilm_submit'), method(post)], [
+            input([type(hidden), name(film_id), value(FilmId)]),
+
+            p([
+                label([for(stars)], 'Stars:'),
+                select([
+                    name(stars),
+                    style(SelStyle),
+                    onmouseover("this.style.background='#ccc';"),
+                    onmouseout("this.style.background='#ddd';")
+                ],
+                [ option([value(0)], '0'),
+                  option([value(1)], '1'),
+                  option([value(2)], '2'),
+                  option([value(3)], '3'),
+                  option([value(4)], '4'),
+                  option([value(5)], '5')
+                ])
+            ]),
+
+            p([ label([for(review)], 'Review (optional):') ]),
+            p([ textarea([ name(review),
+                           rows(5),
+                           cols(50),
+                           style('font-family: "Copperplate", sans-serif; padding:4px;')
+                         ], '') ]),
+
+            p(input([
+                type(submit),
+                value('Submit'),
+                style(BtnStyle),
+                onmouseover(HoverIn),
+                onmouseout(HoverOut)
+            ]))
         ]),
-      p([ label([for(review)], 'Review (opcional):') ]),
-      p([ textarea([name(review),rows(5),cols(50)], '') ]),
-      p([ input([type(submit),value('Submit'),
-                 style('font-family:Copperplate; padding:4px 8px;') ]) ])
-    ]),
-    p([
-      a([href('/showfilms')], 'See My Films'),
-      text(' | '),
-      a([href('/')],         'Return Home')
-    ])
-    
-  ]).
+
+        % “See My Films” button
+        p(a([
+            href('/showfilms'),
+            style(BtnStyle),
+            onmouseover(HoverIn),
+            onmouseout(HoverOut)
+          ], 'See My Films')),
+
+        % “Return Home” button
+        p(a([
+            href('/'),
+            style(BtnStyle),
+            onmouseover(HoverIn),
+            onmouseout(HoverOut)
+          ], 'Return Home'))
+    ]).
+
 
 %% POST: recebe a avaliação e guarda
 rate_film_submit(Request) :-
-  http_session_data(user(User)),
-  http_parameters(Request, [
-    film_id(FilmId,[]),
-    stars(StarsAtom,[]),
-    review(Review,[optional(true),default('')])
-  ]),
-  atom_number(StarsAtom,Stars),
-  get_time(TS), stamp_date_time(TS,DT,local),
-  set_rating(User,FilmId,Stars,Review,DT),
-  page_wrapper('Rating submitted!', [
-    h1('Rating submitted!'),
-    p(a([href('/showfilms')],'See My Films')),
-    p(a([href('/myratings')],'See My Ratings')),
-    p(a([href('/')],'Return Home'))
-  ]).
+    http_session_data(user(User)),
+    http_parameters(Request, [
+        film_id(FilmId, []),
+        stars(StarsAtom, []),
+        review(Review, [optional(true), default('')])
+    ]),
+    atom_number(StarsAtom, Stars),
+    get_time(TS), stamp_date_time(TS, DT, local),
+    set_rating(User, FilmId, Stars, Review, DT),
 
-  get_movie_title(MovieID, Title) :-
-    db(MovieID, name, Title), !.
+    % shared button style
+    BtnStyle = 'font-family: "Copperplate", sans-serif; font-size: 17px; font-weight: 300; color: #222; margin:10px; padding:4px 8px; background:#ddd; border:none; border-radius:4px; text-decoration:none; cursor:pointer;',
+    HoverIn  = "this.style.background='#ccc';",
+    HoverOut = "this.style.background='#ddd';",
+
+    page_wrapper('Rating submitted!', [
+        h1('Rating submitted!'),
+
+        % “See My Films” button
+        p(a([
+            href('/showfilms'),
+            style(BtnStyle),
+            onmouseover(HoverIn),
+            onmouseout(HoverOut)
+          ], 'See My Films')),
+
+        % “See My Ratings” button
+        p(a([
+            href('/myratings'),
+            style(BtnStyle),
+            onmouseover(HoverIn),
+            onmouseout(HoverOut)
+          ], 'See My Ratings')),
+
+        % “Return Home” button
+        p(a([
+            href('/'),
+            style(BtnStyle),
+            onmouseover(HoverIn),
+            onmouseout(HoverOut)
+          ], 'Return Home'))
+    ]).
+
+
+get_movie_title(MovieID, Title) :-
+  db(MovieID, name, Title), !.
 get_movie_title(_, 'Unknown Title').
 
-  show_ratings_page(_Request) :-
-    ( http_session_data(user(User)) -> true ; User = none ),
-    ( User == none ->
-        % sem sessão, redireciona para login
-        page_wrapper('Login Required', [
-          script([], 'alert("Please login first"); window.location="/login";')
-        ])
-    ;
-        % utilizador logado → obter ratings
-        all_user_ratings(User, Ratings),
+%% Show Ratings Page: styled like show_films_page
+show_ratings_page(_Request) :-
+    (   http_session_data(user(User))
+    ->  true
+    ;   User = none
+    ),
+    (   User == none
+    ->  reply_html_page(
+            title('My Ratings - Login Required'),
+            [ \current_user_info,
+              script([], 'alert("Please login first"); window.location.href = "/login";')
+            ])
+    ;   % fetch this user's ratings
+        all_user_ratings(User, Ratings), % function in rating.pl
         filter_latest_ratings(Ratings, LatestRatings),
 
-        % 1. Decide o bloco de ratings
-        ( LatestRatings = [] ->
-            RatingsBlock = [ p('No ratings yet.') ]
-        ;
-            RatingsBlock = [ ul([ style('list-style:none;margin:20px 0;padding:0;') ],\rating_list_items(LatestRatings))]
+        % build the ratings block
+        (   LatestRatings = []
+        ->  Block = [ p('No ratings yet.') ]
+        ;   Block = [ ul([ style('list-style:none; margin:20px 0; padding:0; font-family:"Copperplate",sans-serif;') ],
+                          \rating_list_items(LatestRatings)) ]
         ),
 
-        % 2. Renderiza tudo correctamente
-        page_wrapper('My Ratings', [
-          h1('My Ratings'),
-          % insere o bloco já construído
-          div([class('ratings-list')], RatingsBlock),
-          % link de voltar com sintaxe correcta
-          p([ a([href('/')], 'Return Home'),
-              ' | ',
-              a([href('/showfilms')], 'See My Films')
-            ])
+        % common button style
+        BtnStyle = 'font-family: "Copperplate", sans-serif; font-size: 17px; font-weight: 300; color: #222; margin:10px; padding:4px 8px; background:#ddd; border:none; border-radius:4px; text-decoration:none; cursor:pointer;',
+        HoverIn  = "this.style.background='#ccc';",
+        HoverOut = "this.style.background='#ddd';",
+
+        % render page
+        page_wrapper('Your Ratings', [
+          h1('Your Ratings'),
+          div([class('ratings-list')], Block),
+
+          % Return Home button
+          p(a([ href('/'),
+                 style(BtnStyle),
+                 onmouseover(HoverIn),
+                 onmouseout(HoverOut)
+               ], 'Return Home')),
+
+          % See My Films button
+          p(a([ href('/showfilms'),
+                 style(BtnStyle),
+                 onmouseover(HoverIn),
+                 onmouseout(HoverOut)
+               ], 'See My Films'))
         ])
     ).
+
+
 rating_list_items([]) --> [].
 rating_list_items([rating(_,MovieID,Stars,Review,DT_utc)|Rest]) -->
   {
-    % converte o termo UTC em segundos
+    % convert UTC datetime to local and format
     date_time_stamp(DT_utc, TS),
-    % reconstrói um termo date–time em hora local
     stamp_date_time(TS, DT_local, local),
-    % formata usando a hora local
-    format_time(atom(DateText), '%Y-%m-%d %H:%M', DT_local),
+    format_time(atom(DateText), '%H:%M on %Y-%m-%d', DT_local),
+
+    % look up title
     get_movie_title(MovieID, Title),
+
+    % build optional review paragraph(s), now with quotes and margin-top
     ( Review \== '' ->
-        ReviewBlock = [ div([class(review)], [ em(Review) ]) ]
-    ; ReviewBlock = [] ),
-    RatingStars = span([class(stars)], [Stars, '★'])
+            ReviewBlock0 = [ div([ class(review),  style('margin-top:5px; font-size:15px; font-style:italic;') ],
+                  ['"', Review, '"']) ]
+    ;   ReviewBlock0 = []
+    ),
+
+    % build star‐span
+    RatingStars = span([class(stars), style('font-weight:bold;')], [Stars, '★']),
+
+    % append a horizontal rule after review block
+    append( ReviewBlock0,
+            [ hr([ style('border-top:1px solid #ccc; margin:10px 0;') ], []) ],
+            ReviewBlock
+          )
   },
   html(li([class(rating_item)], [
-    h3(Title),
-    div([class('details')], [
+    h3([ style('margin-top:15px;') ], Title),
+    div([class(details)], [
       RatingStars,
-      span([class('date')], [' on ', DateText])
+      span([class(date)], [' at ', DateText])
     ])
+    % splice in the quoted, styled review + divider
     | ReviewBlock
   ])),
   rating_list_items(Rest).
+
 
 % Filtra para manter apenas o rating mais recente de cada filme
 filter_latest_ratings(Ratings, LatestRatings) :-
