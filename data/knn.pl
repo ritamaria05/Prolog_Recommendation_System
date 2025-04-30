@@ -1,17 +1,6 @@
 :- [ratingsdb].
 :- [movie].
 
-% Base de filmes
-db(tt1, name, 'Matrix').
-db(tt2, name, 'Blade Runner').
-db(tt3, name, 'Inception').
-
-% Avaliações
-rating('Rita', tt1, 5, 'Adorei', _).
-rating('Ana', tt1, 5, '', _).
-rating('Ana', tt2, 4, '', _).
-rating('Pedro', tt1, 4, '', _).
-rating('Pedro', tt3, 5, '', _).
 
 
 % item_vector(Item, Vector) — vetor com tuplos User-Score
@@ -166,7 +155,6 @@ random_good_movies(User, N, List) :-
     append(List, _, Shuffled).
 
 % Sistema híbrido de recomendações
-% Sistema híbrido de recomendações
 smart_recommend(User, K, N, Recs, Method) :-  % Adicionamos o parâmetro Method
     (   recommend_items(User, K, N, R), R \= [] -> Recs = R, Method = 'KNN (similaridade de cosseno)'
     ;   preferred_genre(User, G) -> recommend_by_genre(User, G, N, Recs), Method = 'Recomendacao por genero preferido'
@@ -175,9 +163,19 @@ smart_recommend(User, K, N, Recs, Method) :-  % Adicionamos o parâmetro Method
     ).
 
 % Exibe as recomendações, agora com o método utilizado
-print_recommendations([], _).
-print_recommendations([Score-ID | T], Method) :-
+print_recommendations([], Method) :-
+    format('Metodo: ~w~nSem recomendações disponíveis.~n', [Method]).
+print_recommendations([Elem | T], Method) :-
+    format('Metodo: ~w~n', [Method]),
+    print_rec([Elem | T]).
+
+print_rec([]).
+print_rec([Score-ID | T]) :-
+    number(Score), !,
     ( db(ID, name, Title) -> true ; Title = 'Titulo desconhecido' ),
-    format('Metodo: ~w~n', [Method]),  % Exibe o método utilizado
     format('Recomendacao: ~w (~2f)~n', [Title, Score]),
-    print_recommendations(T, Method).
+    print_rec(T).
+print_rec([ID | T]) :-
+    ( db(ID, name, Title) -> true ; Title = 'Titulo desconhecido' ),
+    format('Recomendacao: ~w~n', [Title]),
+    print_rec(T).
