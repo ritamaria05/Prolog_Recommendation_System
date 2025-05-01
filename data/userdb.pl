@@ -87,3 +87,11 @@ assert(db2(test101,film,tt0058777)).
 assert(db2('Max',film,tt1253863)).
 assert(db2('Orlando',film,tt0090555)).
 assert(db2('Orlando',film,tt0106489)).
+retractall(db2('Orlando',film,tt0018773),1).
+retractall(db2('Orlando',film,tt0004972),1).
+retractall(db2('Orlando',film,tt0106489),1).
+retractall(db2('Orlando',film,tt0090555),1).
+assert(db2('Orlando',film,tt1431045)).
+assert(db2('Orlando',film,tt5463162)).
+assert(db2('Orlando',film,tt0145487)).
+assert(db2('Orlando',film,tt1430132)).

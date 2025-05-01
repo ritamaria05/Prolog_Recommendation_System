@@ -27,21 +27,22 @@ parseMovies(Stream) :-
 addInfo(Row) :-
     % convert terms into lists
     Row =.. [_, ID, _, Name, Year, _, Genre, Runtime, Country, _, 
-            _,_,_,_,_, Rating,Votes | _], 
-    addTitle(ID, Name, Year, Genre, Runtime, Country, Rating, Votes).  
+            Producer,_,_,_,_, Rating,Votes | _], 
+    addTitle(ID, Name, Year, Genre, Runtime, Country, Producer, Rating, Votes).  
 
 % return true (skip film) if one of the arguments is missing from the csv file
-addTitle(_,_,'',_,_,_,_,_). 
-addTitle(_,_,_,'',_,_,_,_). 
-addTitle(_,_,_,_,'',_,_,_). 
-addTitle(_,_,_,_,_,'',_,_). 
-addTitle(_,_,_,_,_,_,'',_). 
-addTitle(_,_,_,_,_,_,_,''). 
+addTitle(_,_,'',_,_,_,_,_,_). 
+addTitle(_,_,_,'',_,_,_,_,_). 
+addTitle(_,_,_,_,'',_,_,_,_). 
+addTitle(_,_,_,_,_,'',_,_,_). 
+addTitle(_,_,_,_,_,_,'',_,_). 
+addTitle(_,_,_,_,_,_,_,'',_). 
+addTitle(_,_,_,_,_,_,_,_,'').
 % skip films with < 20000 votes (limit DB size)
 addTitle(_,_,_,_,_,_,_,Votes) :- 
     Votes < 20000.  
 
-addTitle(ID, Name, Year, Genre, Runtime, Country, Rating, Votes) :-
+addTitle(ID, Name, Year, Genre, Runtime, Country, Producer, Rating, Votes) :-
     assert( db(ID, name, Name) ), 
     assert( db(ID, runtime, Runtime) ),
     assert( db(ID, year, Year) ),  
@@ -49,6 +50,7 @@ addTitle(ID, Name, Year, Genre, Runtime, Country, Rating, Votes) :-
     % convert country into list
     atomic_list_concat(CtryLst, ', ', Country), 
     addList(ID, country, CtryLst), 
+    assert( db(ID, producer, Producer) ),
     % convert genre into list
     atomic_list_concat(GenreList, ', ', Genre), 
     addList(ID, genre, GenreList).
@@ -64,3 +66,8 @@ addList(ID, P, [H|T]) :-
     downcase_atom(H, A), 
     assert( db(ID, P, A) ), 
     addList(ID, P, T). 
+
+dump_kb_to_file :-
+    tell('movie.pl'),          % Open File for output
+    listing(db/3),            % Write all predicates to the current output
+    told.               % Close the output file

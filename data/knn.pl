@@ -84,8 +84,11 @@ recommend_items(User, K, N, Recommendations) :-
     exclude([_-C]>>(member(C, Seen)), AllCandidates, Unseen),
     aggregate_similarities(Unseen, Aggregated),
     sort(0, @>=, Aggregated, Sorted),
-    length(Recommendations, N),
+    length(Sorted, Len),
+    Take is min(N, Len),
+    length(Recommendations, Take),
     append(Recommendations, _, Sorted).
+
 
 % Recomenda filmes populares (baseado em avaliações positivas)
 popular_items(N, List) :-
@@ -162,6 +165,61 @@ smart_recommend(User, K, N, Recs, Method) :-  % Adicionamos o parâmetro Method
     ;   popular_items(N, Recs), Method = 'Recomendacao de filmes populares'
     ).
 
+hybrid_recommend(User, K, N, FinalRecs, Counts) :-
+    seen_items(User, Seen),
+
+    % 1. KNN
+    ( recommend_items(User, K, N, KNNRecs) -> true ; KNNRecs = [] ),
+    length(KNNRecs, C_KNN),
+    Remaining1 is N - C_KNN,
+
+    % 2. Género
+    ( Remaining1 > 0,
+      preferred_genre(User, G),
+      recommend_by_genre(User, G, Remaining1, GenreRecs)
+    -> true ; GenreRecs = [] ),
+    length(GenreRecs, C_Genre),
+    Remaining2 is Remaining1 - C_Genre,
+
+    append(KNNRecs, GenreRecs, Partial1),
+    list_to_set(Partial1, Unique1),
+    subtract(Unique1, Seen, Clean1),
+
+    % 3. Populares
+    ( Remaining2 > 0,
+      popular_items(Remaining2, PopRecsWithScores),
+      findall(ID, member(_-ID, PopRecsWithScores), PopRecs)
+    -> true ; PopRecs = [] ),
+    length(PopRecs, C_Popular),
+    Remaining3 is Remaining2 - C_Popular,
+
+    append(Clean1, PopRecs, Partial2),
+    list_to_set(Partial2, Unique2),
+    subtract(Unique2, Seen, Clean2),
+
+    % 4. Aleatórias
+    ( Remaining3 > 0,
+      random_good_movies(User, Remaining3, RandRecs)
+    -> true ; RandRecs = [] ),
+    length(RandRecs, C_Random),
+
+    append(Clean2, RandRecs, AllFinal),
+    list_to_set(AllFinal, UniqueFinal),
+    subtract(UniqueFinal, Seen, CleanFinal),
+
+    % Trunca se necessário
+    ( length(CleanFinal, Len), Len > N
+    -> length(FinalRecs, N), append(FinalRecs, _, CleanFinal)
+    ; FinalRecs = CleanFinal ),
+
+    Counts = counts{
+        knn: C_KNN,
+        genre: C_Genre,
+        popular: C_Popular,
+        random: C_Random
+    }.
+
+
 % Exibe as recomendações, agora com o método utilizado
 print_recommendations([], Method) :-
     format('Metodo: ~w~nSem recomendações disponíveis.~n', [Method]).
@@ -179,3 +237,8 @@ print_rec([ID | T]) :-
     ( db(ID, name, Title) -> true ; Title = 'Titulo desconhecido' ),
     format('Recomendacao: ~w~n', [Title]),
     print_rec(T).
+
+%hybrid_recommend('Rita', 10, 10, Recs, Counts),print_recommendations(Recs, 'Sistema híbrido com prioridade KNN').
+% ^^ good query to see the effectiveness of knn. Rita and Orlando both liked Wolverine. 
+% Since Orlando liked other films such as Deadpool, Spiderman, etc. It recommends Rita those films.
+% 4 or 5 star rating = user liked the film
