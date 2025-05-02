@@ -95,3 +95,4 @@ assert(db2('Orlando',film,tt1431045)).
 assert(db2('Orlando',film,tt5463162)).
 assert(db2('Orlando',film,tt0145487)).
 assert(db2('Orlando',film,tt1430132)).
+assert(db2('Max',film,tt6806448)).
