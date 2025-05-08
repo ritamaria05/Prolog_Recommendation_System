@@ -36,6 +36,7 @@
 :- http_handler(root(allfilms), all_films_page, []).
 :- http_handler(root(removefilm), remove_film_page, []).
 :- http_handler(root(removefilm_submit), remove_film_submit, []).
+:- http_handler(root(film), film_page, []).
 
 %%-----------------------------------------------------------------------
 %% layout: injects the stylesheet, user‐info bar, and center_box wrapper
@@ -140,7 +141,10 @@ home_page(_Request) :-
 %% Registration Page: displays a form for new user registration.
 register_page(_Request) :-
     % same button/link style as home_page
-    BtnStyle = 'font-family: \"Copperplate\", sans-serif; font-size: 17px;
+    BtnStyle = 'font-family: "Copperplate", sans-serif; font-size: 17px;
+               font-weight: 300; color: #222;  padding:4px 8px;
+               background:#ddd; border:none; border-radius:4px; text-decoration:none; cursor:pointer;',
+    InputStyle = 'font-family: "Copperplate", sans-serif; font-size: 17px;
                font-weight: 300; color: #222; margin:10px; padding:4px 8px;
                background:#ddd; border:none; border-radius:4px; text-decoration:none;',
     HoverIn  = "this.style.background='#ccc';",
@@ -152,7 +156,7 @@ register_page(_Request) :-
         p([], [
           label([for(name)], 'Username:'),
           input([name(name), type(text),
-                 style(BtnStyle),
+                 style(InputStyle),
                  onmouseover(HoverIn),
                  onmouseout(HoverOut)
                ])
@@ -160,7 +164,7 @@ register_page(_Request) :-
         p([], [
           label([for(password)], 'Password:'),
           input([name(password), type(password),
-                 style(BtnStyle),
+                 style(InputStyle),
                  onmouseover(HoverIn),
                  onmouseout(HoverOut)
                ])
@@ -209,8 +213,11 @@ register_submit(Request) :-
 
 %% Login Page: presents a login form.
 login_page(_Request) :-
-    % reuse the same style
-    BtnStyle = 'font-family: \"Copperplate\", sans-serif; font-size: 17px;
+    % shared button/link style
+    BtnStyle = 'font-family: "Copperplate", sans-serif; font-size: 17px;
+               font-weight: 300; color: #222;  padding:4px 8px;
+               background:#ddd; border:none; border-radius:4px; text-decoration:none; cursor:pointer;',
+    InputStyle = 'font-family: "Copperplate", sans-serif; font-size: 17px;
                font-weight: 300; color: #222; margin:10px; padding:4px 8px;
                background:#ddd; border:none; border-radius:4px; text-decoration:none;',
     HoverIn  = "this.style.background='#ccc';",
@@ -221,31 +228,35 @@ login_page(_Request) :-
       form([ action('/login_submit'), method('post') ], [
         p([], [
           label([for(name)], 'Username:'),
-          input([name(name), type(text),
-                 style(BtnStyle),
-                 onmouseover(HoverIn),
-                 onmouseout(HoverOut)
-               ])
+          input([ name(name), type(text),
+                  style(InputStyle),
+                  onmouseover(HoverIn),
+                  onmouseout(HoverOut)
+                ])
         ]),
         p([], [
           label([for(password)], 'Password:'),
-          input([name(password), type(password),
-                 style(BtnStyle),
-                 onmouseover(HoverIn),
-                 onmouseout(HoverOut)
-               ])
+          input([ name(password), type(password),
+                  style(InputStyle),
+                  onmouseover(HoverIn),
+                  onmouseout(HoverOut)
+                ])
         ]),
-        p([], input([type(submit), value('Login'),
-                     style(BtnStyle),
-                     onmouseover(HoverIn),
-                     onmouseout(HoverOut)
-                   ]))
+        p([], 
+          button([ type(submit),
+                   style(BtnStyle),
+                   onmouseover(HoverIn),
+                   onmouseout(HoverOut)
+                 ], 'Login')
+        )
       ]),
-      p(a([ href('/'), style(BtnStyle),
+      p(a([ href('/'),
+            style(BtnStyle),
             onmouseover(HoverIn),
             onmouseout(HoverOut)
           ], 'Return Home'))
     ]).
+
 
 %% Login Handler: extracts parameters, calls login/3, and shows the result.
 login_submit(Request) :-
@@ -491,24 +502,18 @@ recommend_questions_result(Request) :-
 list_films([]) --> [].
 list_films([Title|T]) -->
   {
-    % grab its ID and year
-    db(Id, name,  Title),
-    db(Id, year,  Year),
-    % build the hrefs and display strings
-    format(atom(ImdbLink),    "https://www.imdb.com/title/~w/", [Id]),
-    format(atom(YearStr),     "(~w)", [Year]),
-    LiStyle = 'margin-bottom:16px; list-style:none; font-family:"Copperplate",sans-serif;'
+    db(Id, name, Title),
+    db(Id, year, Year),
+    LiStyle = 'margin-bottom:16px; list-style:none; font-family:"Copperplate",sans-serif;',
+    format(atom(DetailHref), '/film?film_id=~w', [Id]),
+    format(atom(YearStr),    "(~w)", [Year])
   },
   html(li([ style(LiStyle) ], [
-    % title as a link
-    a([ href(ImdbLink), target('_blank') ], b(Title)),
-    span([], ' '),          % small spacer
-    span([], YearStr),      % year in brackets
-    span([], ' '),          % small spacer
-    \add_link(Id)           % your existing Add-link DCG
+    a([ href(DetailHref) ], b(Title)),  % now goes to your Film Page
+    span([], ' '),
+    span([], YearStr)
   ])),
   list_films(T).
-
 
 
 %% Helper: convert an atom to an integer, defaulting to Default on failure
@@ -726,20 +731,32 @@ films_html(Films, \list_film_elements(Films)).
 %% Helper to render your films list with a Remove and rate link 
 list_film_elements([]) --> [].
 list_film_elements([Name|T]) -->
-    {
-        db(FilmId, name, Name),
-        ( db(FilmId, year, Year)-> format(string(YS), " (~w)", [Year]);  YS = ""
-        ),
-        format(string(Link), "https://www.imdb.com/title/~w/", [FilmId])
-    },
-    html(p([ 
-        a([href(Link), target('_blank')], b(Name)),        % film title
-        span(YS),       % year in brackets
-        ' ',            % small spacer
-        \remove_link(FilmId),
-        \rate_link(FilmId)
-    ])),
-    list_film_elements(T).
+  {
+    % Look up ID and optional year
+    db(FilmId, name, Name),
+    ( db(FilmId, year, Year)
+    -> format(string(YearStr), " (~w)", [Year])
+    ;  YearStr = ""
+    ),
+    % Build the link to our film_page/1
+    format(string(DetailLink), "/film?film_id=~w", [FilmId])
+  },
+  html(p([
+    % Film title now links to /film?film_id=…
+    a([
+        href(DetailLink),
+        style('font-family:"Copperplate",sans-serif;color:#222;text-decoration:none;'),
+        onmouseover("this.style.textDecoration='underline';"),
+        onmouseout("this.style.textDecoration='none';")
+      ],
+      b(Name)
+    ),
+    span(YearStr),
+    ' ',
+    \remove_link(FilmId),
+    \rate_link(FilmId)
+  ])),
+  list_film_elements(T).
 
 %% GET: mostra o formulário de rating
 rate_film_page(Request) :-
@@ -1048,6 +1065,98 @@ all_films_page(Request) :-
     ]).
 
 
+%% ----------------------------------------------------------------------------
+%% Film Page: shows details for the given film_id
+%% URL: /film?film_id=tt1234567
+%% ----------------------------------------------------------------------------
+film_page(Request) :-
+    % 1. Pull the film_id from the URL
+    http_parameters(Request, [
+      film_id(FilmId, [atom])
+    ]),
+
+    % 2. Lookup all the fields (default to 'Unknown'/'Unrated')
+    ( db(FilmId, name,    Name)    -> true ; Name    = 'Unknown' ),
+    ( db(FilmId, year,    Year)    -> true ; Year    = 'Unknown' ),
+    ( db(FilmId, country, Country) -> true ; Country = 'Unknown' ),
+    ( db(FilmId, producer, Producer) -> true ; Producer = 'Unknown' ),
+    findall(G, db(FilmId, genre, G), Genres),
+    ( db(FilmId, rating,  Rating) -> true ; Rating  = 'Unrated' ),
+
+    % 3. Build the Genres paragraph
+    ( Genres = [] ->
+        GenresEl = p([b('Genres: '), 'None listed'])
+    ; atomic_list_concat(Genres, ', ', GS),
+      GenresEl = p([b('Genres: '), span(GS)])
+    ),
+
+    % 4. Common button styling
+    BtnStyle = 'font-family: "Copperplate", sans-serif; font-size:17px;
+                font-weight:300; color:#222; margin:10px; padding:4px 8px;
+                background:#ddd; border:none; border-radius:4px;
+                text-decoration:none; cursor:pointer;',
+    HoverIn  = "this.style.background='#ccc';",
+    HoverOut = "this.style.background='#ddd';",
+
+    % 5. Conditionally build “Add” and “Rate” blocks as lists
+    ( http_session_data(user(_)) ->
+        format(atom(AddHref),  '/addfilm_submit?film_id=~w', [FilmId]),
+        format(atom(RateHref), '/ratefilm?film_id=~w',        [FilmId]),
+        AddBlock  = [ p(a([
+                         href(AddHref),
+                         style('font-family:"Copperplate",sans-serif;
+                                font-weight:bold;margin:10px; padding:4px 8px;
+                                background:#007BFF;color:#fff;
+                                border:none;border-radius:4px;
+                                text-decoration:none;cursor:pointer;'),
+                         onmouseover("this.style.background='#0056FF';"),
+                         onmouseout("this.style.background='#007BFF';")
+                       ], 'Add to My Films')) ],
+        RateBlock = [ p(a([
+                         href(RateHref),
+                         style('font-family:"Copperplate",sans-serif;
+                                font-weight:bold;margin:10px; padding:4px 8px;
+                                background:#e67e22;color:#fff;
+                                border:none;border-radius:4px;
+                                text-decoration:none;cursor:pointer;'),
+                         onmouseover("this.style.background='#d35400';"),
+                         onmouseout("this.style.background='#e67e22';")
+                       ], 'Rate')) ]
+    ;   AddBlock  = [],
+        RateBlock = []
+    ),
+
+    % 6. Core film info
+    Core = [
+      h1(b(Name)),
+      p([b('Year: '),      span(Year)]),
+      p([b('Country: '),   span(Country)]),
+      p([b('Producer/s: '),span(Producer)]),
+      p([b('Rating: '),    span(Rating)]),
+      GenresEl
+    ],
+
+    % 7. Assemble full body in stages
+    append(Core, AddBlock,       WithAdd),
+    append(WithAdd, RateBlock,   WithButtons),
+    append(WithButtons, [
+      p(a([ href('/showfilms'),
+             style(BtnStyle), onmouseover(HoverIn), onmouseout(HoverOut)
+           ], 'Show Your Films')),
+      p(a([ href('/allfilms'),
+             style(BtnStyle), onmouseover(HoverIn), onmouseout(HoverOut)
+           ], 'Show All Films')),
+      p(a([ href('/'),
+             style(BtnStyle), onmouseover(HoverIn), onmouseout(HoverOut)
+           ], 'Return Home'))
+    ], FullBody),
+
+    % 8. Render
+    page_wrapper([Name], FullBody).
+
+
+
+
 %% This DCG emits an “Add” link iff there’s a logged‑in user.
 add_link(FilmId) -->
     {
@@ -1069,28 +1178,17 @@ add_link(_) --> [].  % otherwise, emit nothing
 %% and injects the add_link//1 into the <li>.
 film_list_items([]) --> [].
 film_list_items([Name|T]) -->
-    {
-        db(FilmId, name,   Name),
-        % optional year string
-        ( db(FilmId, year, Year)
-        -> format(string(YS), " (~w)", [Year])
-        ;  YS = ""
-        ),
-        % optional rating
-        ( db(FilmId, rating, Rating)
-        -> true
-        ;  Rating = 'Unrated'
-        ),
-        format(string(Link), "https://www.imdb.com/title/~w/", [FilmId])
+      {
+      db(Id, name, Name),
+      db(Id, year, Year),
+      LiStyle = 'margin-bottom:16px; list-style:none; font-family:"Copperplate",sans-serif;',
+      format(atom(DetailHref), '/film?film_id=~w', [Id]),
+      format(atom(YearStr),    "(~w)", [Year])
     },
-    html(li([ style('margin:15px 0; list-style:none;') ], [
-        a([href(Link), target('_blank')],b(Name)),
-        span(YS),
-        span(' – '),
-        span(Rating),
-        % space then maybe an “Add” link
-        ' ',
-        \add_link(FilmId)
+    html(li([ style(LiStyle) ], [
+      a([ href(DetailHref) ], b(Name)),  % now goes to your Film Page
+      span([], ' '),
+      span([], YearStr)
     ])),
     film_list_items(T).
 
