@@ -1098,32 +1098,29 @@ film_page(Request) :-
     HoverIn  = "this.style.background='#ccc';",
     HoverOut = "this.style.background='#ddd';",
 
-    % 5. Conditionally build “Add” and “Rate” blocks as lists
+    % 5. Conditionally build “Add” and “Rate” buttons, side by side
     ( http_session_data(user(_)) ->
         format(atom(AddHref),  '/addfilm_submit?film_id=~w', [FilmId]),
         format(atom(RateHref), '/ratefilm?film_id=~w',        [FilmId]),
-        AddBlock  = [ p(a([
-                         href(AddHref),
-                         style('font-family:"Copperplate",sans-serif;
-                                font-weight:bold;margin:10px; padding:4px 8px;
-                                background:#007BFF;color:#fff;
-                                border:none;border-radius:4px;
-                                text-decoration:none;cursor:pointer;'),
-                         onmouseover("this.style.background='#0056FF';"),
-                         onmouseout("this.style.background='#007BFF';")
-                       ], 'Add to My Films')) ],
-        RateBlock = [ p(a([
-                         href(RateHref),
-                         style('font-family:"Copperplate",sans-serif;
-                                font-weight:bold;margin:10px; padding:4px 8px;
-                                background:#e67e22;color:#fff;
-                                border:none;border-radius:4px;
-                                text-decoration:none;cursor:pointer;'),
-                         onmouseover("this.style.background='#d35400';"),
-                         onmouseout("this.style.background='#e67e22';")
-                       ], 'Rate')) ]
-    ;   AddBlock  = [],
-        RateBlock = []
+        Buttons = p([
+          a([ href(AddHref),
+              style('font-family: "Copperplate", sans-serif; font-size:17px;
+                font-weight:300; background:#007BFF;color:#fff; margin:10px; padding:4px 8px;
+                border:none; border-radius:4px;
+                text-decoration:none; cursor:pointer;'),
+              onmouseover("this.style.background='#0056FF';"),
+              onmouseout("this.style.background='#007BFF';")
+            ], 'Add'),
+          a([ href(RateHref),
+              style('font-family: "Copperplate", sans-serif; font-size:17px;
+                font-weight:300; background:#e67e22;color:#fff; margin:10px; padding:4px 8px;
+                border:none; border-radius:4px;
+                text-decoration:none; cursor:pointer;'),
+              onmouseover("this.style.background='#d35400';"),
+              onmouseout("this.style.background='#e67e22';")
+            ], 'Rate')
+        ])
+    ; Buttons = []
     ),
 
     % 6. Core film info
@@ -1133,13 +1130,12 @@ film_page(Request) :-
       p([b('Country: '),   span(Country)]),
       p([b('Producer/s: '),span(Producer)]),
       p([b('Rating: '),    span(Rating)]),
-      GenresEl
+      GenresEl,
+      Buttons
     ],
 
-    % 7. Assemble full body in stages
-    append(Core, AddBlock,       WithAdd),
-    append(WithAdd, RateBlock,   WithButtons),
-    append(WithButtons, [
+    % 7. Footer navigation
+    append(Core, [
       p(a([ href('/showfilms'),
              style(BtnStyle), onmouseover(HoverIn), onmouseout(HoverOut)
            ], 'Show Your Films')),
@@ -1153,8 +1149,6 @@ film_page(Request) :-
 
     % 8. Render
     page_wrapper([Name], FullBody).
-
-
 
 
 %% This DCG emits an “Add” link iff there’s a logged‑in user.
