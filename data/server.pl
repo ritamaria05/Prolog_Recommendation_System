@@ -7,11 +7,16 @@
 :- use_module(library(http/html_write)).
 :- use_module(library(http/http_client)).
 :- use_module(library(http/http_open)).
+:- use_module(library(apply)).
 :- use_module(library(http/json)).
 :- use_module(library(date)).
+:- use_module(library(uri)).
 :- ensure_loaded('users.pl').  % User management and movie DB
 :- use_module(library(http/http_files)). % Serve static files
 :- ensure_loaded('recommend.pl'). % Question-based recommendations
+:- use_module(tmdb_integration).
+:- ensure_loaded('tmdb_integration.pl'). % TMDb integration
+:- initialization(set_tmdb_api_key('bccc509894efa9e817a1152273191223')).
 :- use_module(rating).            % novo
 :- initialization(init_ratings_db).
 % Static file handlers
@@ -44,6 +49,7 @@
 % 1. Configure sua chave TMDb aqui
 % —————————————————————————————
 tmdb_api_key('bccc509894efa9e817a1152273191223').
+tmdb_base_url("https://api.themoviedb.org/3").
 
 %%-----------------------------------------------------------------------
 %% layout: injects the stylesheet, user‐info bar, and center_box wrapper
@@ -655,6 +661,7 @@ remove_film_submit(Request) :-
         p(a([href('/showfilms')], 'See My Films'))
     ]).
 
+
 %% Show Films Page: shows the list of films for the currently logged in user.
 %% If no user is logged in, it shows a pop-up and redirects to the login page.
 show_films_page(_Request) :-
@@ -668,7 +675,8 @@ show_films_page(_Request) :-
             [ \current_user_info,
               script([], 'alert("Please login first"); window.location.href = "/login";')
             ])
-    ;   
+    ;  
+     
     findall(FilmName,
                 ( db2(UserID, film, FilmID),
                   db(FilmID, name, FilmName)
