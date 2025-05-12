@@ -655,87 +655,6 @@ remove_film_submit(Request) :-
         p(a([href('/showfilms')], 'See My Films'))
     ]).
 
-% ------------------------------------------------------------------
-% Predicados auxiliares para agregar preferências do usuário
-% ------------------------------------------------------------------
-
-
-% Busca detalhes completos do filme (sinopse, elenco e equipe)
-get_tmdb_details_full(MovieId, Overview, ActorsList, CrewList) :-
-    tmdb_api_key(Key),
-    format(atom(URL),
-           'https://api.themoviedb.org/3/movie/~w?api_key=~w&language=pt-BR&append_to_response=credits',
-           [MovieId, Key]),
-    setup_call_cleanup(
-      http_open(URL, In, [timeout(20)]),
-      json_read_dict(In, Dict),
-      close(In)
-    ),
-    % Overview
-    ( get_dict(overview, Dict, Ov) -> Overview = Ov ; Overview = '' ),
-    % Cast (nome e gender)
-    ( get_dict(credits, Dict, C0), get_dict(cast, C0, Cast0)
-    -> findall(Name-Gender,
-               ( member(Cm, Cast0), nth1(I, Cast0, Cm), I =< 5,
-                 get_dict(name, Cm, Name),
-                 get_dict(gender, Cm, Gender)
-               ),
-               ActorsList)
-    ; ActorsList = [] ),
-    % Crew (nome e função)
-    ( get_dict(credits, Dict, C1), get_dict(crew, C1, Crew0)
-    -> findall(Name-Job,
-               ( member(Cr, Crew0), get_dict(name, Cr, Name), get_dict(job, Cr, Job) ),
-               CrewList)
-    ; CrewList = [] ).
-
-% Lista de filmes salvos pelo usuário
-user_saved_films(User, FilmIds) :-
-    findall(FId, db2(User, film, FId), FilmIds).
-
-% Mapeia lista para pares Count-Item ordenados decrescente
-freq_map(List, PairsSorted) :-
-    msort(List, Sorted),
-    pack(Sorted, Packed),
-    findall(Count-Item,
-            ( member(Group, Packed), Group = [Item|_], length(Group, Count) ),
-            CountItem),
-    sort(0, @>=, CountItem, PairsSorted).
-
-% Agrega preferências do usuário: gêneros, diretores e atores fem/masc
-aggregate_user_prefs(User, GenreCounts, DirCounts, ActorsF, ActorsM) :-
-    user_saved_films(User, FilmIds),
-    % Gêneros
-    findall(G,
-            ( member(FId, FilmIds), findall(Gen, db(FId, genre, Gen), Gs), member(G, Gs) ),
-            AllGenres),
-    freq_map(AllGenres, GenreCounts),
-    % Diretores
-    findall(Dir,
-            ( member(FId, FilmIds), get_tmdb_details_full(FId, _, _, Crew), member(Dir-'Director', Crew) ),
-            AllDirs),
-    freq_map(AllDirs, DirCounts),
-    % Atores femininos
-    findall(Name,
-            ( member(FId, FilmIds), get_tmdb_details_full(FId, _, Actors, _), member(Name-1, Actors) ),
-            AllF),
-    freq_map(AllF, ActorsF),
-    % Atores masculinos
-    findall(Name,
-            ( member(FId, FilmIds), get_tmdb_details_full(FId, _, Actors2, _), member(Name-2, Actors2) ),
-            AllM),
-    freq_map(AllM, ActorsM).
-
-% Retorna os N primeiros itens de uma lista
-take_n(List, N, Taken) :- length(Taken, N), append(Taken, _, List).
-
-% Formata lista de Count-Item para string "Item(Count)"
-format_pairs(Pairs, Formatted) :-
-    findall(Str,
-            ( member(Count-Item, Pairs), format(string(Str), "~w(~w)", [Item, Count]) ),
-            L),
-    atomic_list_concat(L, ', ', Formatted).
-
 %% Show Films Page: shows the list of films for the currently logged in user.
 %% If no user is logged in, it shows a pop-up and redirects to the login page.
 show_films_page(_Request) :-
@@ -757,22 +676,10 @@ show_films_page(_Request) :-
                 FilmsRaw),
         sort(FilmsRaw, Films),  % Remove duplicates and sort alphabetically
         films_html(Films, FilmHtml),
-        % Gera resumo de preferências
-        aggregate_user_prefs(UserID, GCounts, DCounts, AFCounts, AMCounts),
-        take_n(GCounts, 3, TopG), format_pairs(TopG, GStr),
-        take_n(DCounts, 3, TopD), format_pairs(TopD, DStr),
-        take_n(AFCounts, 3, TopF), format_pairs(TopF, FStr),
-        take_n(AMCounts, 3, TopM), format_pairs(TopM, MStr),
-        SummaryHtml = [
-          h2('Resumo dos Seus Gostos'),
-          p([b('Gêneros: '), span(GStr)]),
-          p([b('Diretores: '), span(DStr)]),
-          p([b('Atores (F): '), span(FStr)]),
-          p([b('Atores (M): '), span(MStr)])
-        ],
+        
         page_wrapper('Your Films', [
             h1('Your Film List'),
-            \(SummaryHtml),
+
             FilmHtml,
             % styled “Return Home” button
             p(a([ href('/'),
