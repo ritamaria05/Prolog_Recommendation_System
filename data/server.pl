@@ -6,6 +6,8 @@
 :- use_module(library(http/http_parameters)).
 :- use_module(library(http/html_write)).
 :- use_module(library(http/http_client)).
+:- use_module(library(http/http_open)).
+:- use_module(library(http/json)).
 :- use_module(library(date)).
 :- ensure_loaded('users.pl').  % User management and movie DB
 :- use_module(library(http/http_files)). % Serve static files
@@ -37,6 +39,11 @@
 :- http_handler(root(removefilm), remove_film_page, []).
 :- http_handler(root(removefilm_submit), remove_film_submit, []).
 :- http_handler(root(film), film_page, []).
+
+% —————————————————————————————
+% 1. Configure sua chave TMDb aqui
+% —————————————————————————————
+tmdb_api_key('bccc509894efa9e817a1152273191223').
 
 %%-----------------------------------------------------------------------
 %% layout: injects the stylesheet, user‐info bar, and center_box wrapper
@@ -103,16 +110,6 @@ home_page(_Request) :-
                                   onmouseover(HoverIn),
                                   onmouseout(HoverOut)
                                 ], 'Get Recommendations')),
-        p([class(menu_item)], a([ href('/addfilm'),
-                                  style(BtnStyle),
-                                  onmouseover(HoverIn),
-                                  onmouseout(HoverOut)
-                                ], 'Add Film')),
-        p([class(menu_item)], a([ href('/removefilm'),
-                                  style(BtnStyle),
-                                  onmouseover(HoverIn),
-                                  onmouseout(HoverOut)
-                                ], 'Remove Film')),
         p([class(menu_item)], a([ href('/showfilms'),
                                   style(BtnStyle),
                                   onmouseover(HoverIn),
@@ -658,7 +655,86 @@ remove_film_submit(Request) :-
         p(a([href('/showfilms')], 'See My Films'))
     ]).
 
+% ------------------------------------------------------------------
+% Predicados auxiliares para agregar preferências do usuário
+% ------------------------------------------------------------------
 
+
+% Busca detalhes completos do filme (sinopse, elenco e equipe)
+get_tmdb_details_full(MovieId, Overview, ActorsList, CrewList) :-
+    tmdb_api_key(Key),
+    format(atom(URL),
+           'https://api.themoviedb.org/3/movie/~w?api_key=~w&language=pt-BR&append_to_response=credits',
+           [MovieId, Key]),
+    setup_call_cleanup(
+      http_open(URL, In, [timeout(20)]),
+      json_read_dict(In, Dict),
+      close(In)
+    ),
+    % Overview
+    ( get_dict(overview, Dict, Ov) -> Overview = Ov ; Overview = '' ),
+    % Cast (nome e gender)
+    ( get_dict(credits, Dict, C0), get_dict(cast, C0, Cast0)
+    -> findall(Name-Gender,
+               ( member(Cm, Cast0), nth1(I, Cast0, Cm), I =< 5,
+                 get_dict(name, Cm, Name),
+                 get_dict(gender, Cm, Gender)
+               ),
+               ActorsList)
+    ; ActorsList = [] ),
+    % Crew (nome e função)
+    ( get_dict(credits, Dict, C1), get_dict(crew, C1, Crew0)
+    -> findall(Name-Job,
+               ( member(Cr, Crew0), get_dict(name, Cr, Name), get_dict(job, Cr, Job) ),
+               CrewList)
+    ; CrewList = [] ).
+
+% Lista de filmes salvos pelo usuário
+user_saved_films(User, FilmIds) :-
+    findall(FId, db2(User, film, FId), FilmIds).
+
+% Mapeia lista para pares Count-Item ordenados decrescente
+freq_map(List, PairsSorted) :-
+    msort(List, Sorted),
+    pack(Sorted, Packed),
+    findall(Count-Item,
+            ( member(Group, Packed), Group = [Item|_], length(Group, Count) ),
+            CountItem),
+    sort(0, @>=, CountItem, PairsSorted).
+
+% Agrega preferências do usuário: gêneros, diretores e atores fem/masc
+aggregate_user_prefs(User, GenreCounts, DirCounts, ActorsF, ActorsM) :-
+    user_saved_films(User, FilmIds),
+    % Gêneros
+    findall(G,
+            ( member(FId, FilmIds), findall(Gen, db(FId, genre, Gen), Gs), member(G, Gs) ),
+            AllGenres),
+    freq_map(AllGenres, GenreCounts),
+    % Diretores
+    findall(Dir,
+            ( member(FId, FilmIds), get_tmdb_details_full(FId, _, _, Crew), member(Dir-'Director', Crew) ),
+            AllDirs),
+    freq_map(AllDirs, DirCounts),
+    % Atores femininos
+    findall(Name,
+            ( member(FId, FilmIds), get_tmdb_details_full(FId, _, Actors, _), member(Name-1, Actors) ),
+            AllF),
+    freq_map(AllF, ActorsF),
+    % Atores masculinos
+    findall(Name,
+            ( member(FId, FilmIds), get_tmdb_details_full(FId, _, Actors2, _), member(Name-2, Actors2) ),
+            AllM),
+    freq_map(AllM, ActorsM).
+
+% Retorna os N primeiros itens de uma lista
+take_n(List, N, Taken) :- length(Taken, N), append(Taken, _, List).
+
+% Formata lista de Count-Item para string "Item(Count)"
+format_pairs(Pairs, Formatted) :-
+    findall(Str,
+            ( member(Count-Item, Pairs), format(string(Str), "~w(~w)", [Item, Count]) ),
+            L),
+    atomic_list_concat(L, ', ', Formatted).
 
 %% Show Films Page: shows the list of films for the currently logged in user.
 %% If no user is logged in, it shows a pop-up and redirects to the login page.
@@ -673,15 +749,30 @@ show_films_page(_Request) :-
             [ \current_user_info,
               script([], 'alert("Please login first"); window.location.href = "/login";')
             ])
-    ;   findall(FilmName,
+    ;   
+    findall(FilmName,
                 ( db2(UserID, film, FilmID),
                   db(FilmID, name, FilmName)
                 ),
                 FilmsRaw),
         sort(FilmsRaw, Films),  % Remove duplicates and sort alphabetically
         films_html(Films, FilmHtml),
+        % Gera resumo de preferências
+        aggregate_user_prefs(UserID, GCounts, DCounts, AFCounts, AMCounts),
+        take_n(GCounts, 3, TopG), format_pairs(TopG, GStr),
+        take_n(DCounts, 3, TopD), format_pairs(TopD, DStr),
+        take_n(AFCounts, 3, TopF), format_pairs(TopF, FStr),
+        take_n(AMCounts, 3, TopM), format_pairs(TopM, MStr),
+        SummaryHtml = [
+          h2('Resumo dos Seus Gostos'),
+          p([b('Gêneros: '), span(GStr)]),
+          p([b('Diretores: '), span(DStr)]),
+          p([b('Atores (F): '), span(FStr)]),
+          p([b('Atores (M): '), span(MStr)])
+        ],
         page_wrapper('Your Films', [
             h1('Your Film List'),
+            \(SummaryHtml),
             FilmHtml,
             % styled “Return Home” button
             p(a([ href('/'),
@@ -892,7 +983,9 @@ show_ratings_page(_Request) :-
             ])
     ;   % fetch this user's ratings
         all_user_ratings(User, Ratings), % function in rating.pl
-        filter_latest_ratings(Ratings, LatestRatings),
+        filter_latest_ratings(Ratings, UnsortedRatings),
+        sort_ratings_by_date_desc(UnsortedRatings, LatestRatings),
+
 
         % build the ratings block
         (   LatestRatings = []
@@ -971,6 +1064,15 @@ rating_list_items([rating(_,MovieID,Stars,Review,DT_utc)|Rest]) -->
 filter_latest_ratings(Ratings, LatestRatings) :-
   group_by_movie(Ratings, Grouped),
   pick_latest_from_group(Grouped, LatestRatings).
+% Ordena os ratings por data de forma decrescente
+  sort_ratings_by_date_desc(Unsorted, Sorted) :-
+    map_list_to_pairs(rating_timestamp, Unsorted, Pairs),
+    keysort(Pairs, SortedAsc),        % keysort by ascending timestamp
+    reverse(SortedAsc, Reversed),     % reverse to get descending
+    pairs_values(Reversed, Sorted).   % extract the sorted ratings
+
+rating_timestamp(rating(_, _, _, _, DateTime), Timestamp) :-
+    date_time_stamp(DateTime, Timestamp).
 
 % Agrupa os ratings pelo MovieID
 group_by_movie(Ratings, Grouped) :-
@@ -1064,6 +1166,37 @@ all_films_page(Request) :-
              'Return Home'))
     ]).
 
+% —————————————————————————————
+% 2. Predicado para buscar detalhes (sinopse + elenco)
+% —————————————————————————————
+get_tmdb_details(MovieId, Overview, ActorsList) :-
+  tmdb_api_key(Key),
+  % Monta a URL: movie/{id}?append_to_response=credits
+  format(atom(URL),
+         'https://api.themoviedb.org/3/movie/~w?api_key=~w&language=pt-BR&append_to_response=credits',
+         [MovieId, Key]),
+  % Faz a requisição HTTP
+  setup_call_cleanup(
+      http_open(URL, In, [timeout(20)]),
+      json_read_dict(In, Dict),
+      close(In)
+  ),
+  % Extrai overview (sinopse)
+  (   get_dict(overview, Dict, Ov) 
+  ->  Overview = Ov
+  ;   Overview = 'Sinopse indisponível.'
+  ),
+  % Extrai elenco (cast): pega até 5 primeiros nomes
+  (   get_dict(credits, Dict, Credits),
+      get_dict(cast, Credits, CastList0)
+  ->  findall(Name,
+              ( nth1(I, CastList0, C), I =< 5,
+                get_dict(name, C, Name)
+              ),
+              ActorsList)
+  ;   ActorsList = []
+  ).
+
 
 %% ----------------------------------------------------------------------------
 %% Film Page: shows details for the given film_id
@@ -1089,6 +1222,19 @@ film_page(Request) :-
     ; atomic_list_concat(Genres, ', ', GS),
       GenresEl = p([b('Genres: '), span(GS)])
     ),
+    % — chama o TMDb para obter sinopse e elenco —
+    get_tmdb_details(FilmId, Overview, ActorsList),
+    PlotEl   = p([b('Sinopse: '), span(Overview)]),
+    atomic_list_concat(ActorsList, ', ', ActorsStr),
+    ActorsEl = p([b('Elenco: '), span(ActorsStr)]),
+    % build imdb link
+    format(atom(IMDbUrl), 'https://www.imdb.com/title/~w/', [FilmId]), IMDbLink = p([
+    b('IMDb: '),
+    a([ href(IMDbUrl),
+        target('_blank'),
+        style('font-family: "Copperplate", sans-serif; color: #1a0dab; text-decoration:underline;')
+      ], IMDbUrl)
+    ]),
 
     % 4. Common button styling
     BtnStyle = 'font-family: "Copperplate", sans-serif; font-size:17px;
@@ -1128,9 +1274,12 @@ film_page(Request) :-
       h1(b(Name)),
       p([b('Year: '),      span(Year)]),
       p([b('Country: '),   span(Country)]),
-      p([b('Producer/s: '),span(Producer)]),
+      p([b('Director: '),span(Producer)]),
       p([b('Rating: '),    span(Rating)]),
       GenresEl,
+      PlotEl,
+      ActorsEl,
+      IMDbLink,
       Buttons
     ],
 

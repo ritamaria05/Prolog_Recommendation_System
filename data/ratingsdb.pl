@@ -18,3 +18,4 @@ rating('Orlando', tt1430132, 5, '', date(2025, 5, 1, 19, 37, 46.34584188461304, 
 rating('Rita', tt1430132, 5, '', date(2025, 4, 25, 17, 6, 12.868751049, 0, 'UTC', -)).
 rating('Max', tt6806448, 4, '', date(2025, 5, 2, 13, 27, 49.00660800933838, -3600, 'GMT Summer Time', true)).
 rating('Max', tt0408060, 1, '', date(2025, 5, 8, 12, 41, 50.05452609062195, -3600, 'GMT Summer Time', true)).
+rating('Rita', tt0816692, 5, 'Masterpiece :D', date(2025, 5, 12, 23, 17, 55.84659695625305, -3600, 'WEST', true)).
