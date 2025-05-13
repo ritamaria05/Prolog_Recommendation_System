@@ -550,10 +550,6 @@ options_html([Text=Val|T], Sel) -->
     html(option(Attrs, Text)),
     options_html(T, Sel).
 
-recommend_list([]) --> [].
-recommend_list([H|T]) -->
-    html(li(H)),
-    recommend_list(T).
 
 
 %% Add Film Page: if a user is logged in, shows the add-film form.
@@ -1254,14 +1250,6 @@ film_list_items([Name|T]) -->
       span([], YearStr)
     ])),
     film_list_items(T).
-
-
-search_form(Query) -->
-    html(form([method(get), action('/allfilms')], [
-      input([type(text), name(q), value(Query), placeholder('Search…')]),
-      input([type(submit), value('Search')])
-    ])).
-
 
 search_and_filter_form(Query, Year, Country, Genre, YearList, CountryList, GenreList) -->
     html(form([method(get), action('/allfilms')], [
