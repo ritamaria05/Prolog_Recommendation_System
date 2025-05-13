@@ -10,6 +10,7 @@
 :- use_module(library(http/json)).
 :- use_module(library(date)).
 :- use_module(library(uri)).
+:- ensure_loaded('knn.pl').
 :- ensure_loaded('users.pl').  % User management and movie DB
 :- use_module(library(http/http_files)). % Serve static files
 :- ensure_loaded('recommend.pl'). % Question-based recommendations
@@ -343,55 +344,67 @@ recommendation_page(_Request) :-
           ], 'Return Home'))
     ]).
 
-%% Recommendation based on my film list
+%% Recommendation page: shows KNN/hybrid recommendations styled como show_films_page
 recommend_myfilms_page(_Request) :-
-    (   http_session_data(user(UserID))
-    ->  true
-    ;   UserID = none
+(   http_session_data(user(UserID))
+->  true
+;   UserID = none
+),
+(   UserID == none
+->  % Not logged in: pop-up + redirect
+    reply_html_page(
+        title('Recommendation – Login Required'),
+        [ \current_user_info,
+          script(
+              [],
+              'alert("Please login first"); window.location.href = "/login";'
+          )
+        ]
+    )
+;   % Logged in: compute recommendations
+    K = 10, N = 10,
+    hybrid_recommend(UserID, K, N, RecIDs, _Counts),
+
+    % Build a paragraph list with the same style as in show_films_page
+    findall(
+        p([
+            a(
+                [ href(DetailLink),
+                  style('font-family:"Copperplate",sans-serif;color:#222;text-decoration:none;'),
+                  onmouseover("this.style.textDecoration='underline';"),
+                  onmouseout("this.style.textDecoration='none';")
+                ],
+                b(Title)
+            )
+          
+        ]),
+        (
+            member(ID, RecIDs),
+            ( db(ID, name, Title) -> true ; Title = 'Unknown Title' ),
+            format(string(DetailLink), "/film?film_id=~w", [ID])
+        ),
+        FilmParagraphs
     ),
-    (   UserID == none
-    ->  reply_html_page(
-            title('Recommendation - Login Required'),
-            [ \current_user_info,
-              script([], 'alert("Please login first"); window.location.href = "/login";')
-            ]);   % Passo 1: Filmes que o usuário já viu
-        findall(FilmID,
-                db2(UserID, film, FilmID),
-                UserFilmIDs),
 
-        % Passo 2: Gêneros desses filmes
-        findall(Genre,
-                ( member(FID, UserFilmIDs),
-                  db(FID, genre, Genre)
-                ),
-                GenresRaw),
-        sort(GenresRaw, Genres),
+    % If empty, show message
+    (   FilmParagraphs = []
+    ->  Body = [ p('No recommendations available at this time.') ]
+    ;   Body = FilmParagraphs
+    ),
 
-        % Passo 3: Buscar filmes do mesmo género, que o usuário ainda não viu
-        findall(RecommendedFilm,
-                ( member(G, Genres),
-                  db(RecFilmID, genre, G),
-                  \+ member(RecFilmID, UserFilmIDs),
-                  db(RecFilmID, name, RecommendedFilm)
-                ),
-                RecsRaw),
-        sort(RecsRaw, Recs),
+    % Render the page
+    page_wrapper('Recommended Based on Your Films', [
+        h1('Recommended Films'),
+        div([class(container)], Body),
+        p(a([ href('/'),
+              style('font-family: "Copperplate", sans-serif; font-size: 17px; font-weight: 300; color: #222; margin:10px; padding:4px 8px; background:#ddd; border:none; border-radius:4px; text-decoration:none; cursor:pointer;'),
+              onmouseover("this.style.background='#ccc';"),
+              onmouseout("this.style.background='#ddd';")
+            ],
+            'Return Home'))
+    ])).
 
-        % Passo 4: Gerar HTML e exibir recomendações
-        films_html(Recs, RecHtml),
-        page_wrapper('Recommended Films', [
-            h1('Recommended Based on Your Film List'),
-            (Recs == [] 
-            ->
-                (   p('No recommendations available.'),
-                    p(a([href('/add_films')], 'Go to Add Films first'))
-                )
-            ;  % Caso haja recomendações
-                RecHtml
-            ),
-            p(a([href('/')], 'Return Home'))
-        ])
-    ).
+
 
 %% Recommendation based on specific questions (FORM)
 recommend_questions_form(_Request) :-
