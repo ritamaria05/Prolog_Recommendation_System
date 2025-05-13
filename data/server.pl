@@ -1,4 +1,3 @@
-% server.pl
 :- encoding(utf8).
 :- use_module(library(http/http_session)).
 :- use_module(library(http/thread_httpd)).
@@ -16,15 +15,14 @@
 :- ensure_loaded('recommend.pl'). % Question-based recommendations
 :- use_module(tmdb_integration).
 :- ensure_loaded('tmdb_integration.pl'). % TMDb integration
-:- initialization(set_tmdb_api_key('bccc509894efa9e817a1152273191223')).
-:- use_module(rating).            % novo
-:- initialization(init_ratings_db).
 :- ensure_loaded('knn.pl'). % KNN-based recommendations
+:- use_module(rating).
 :- dynamic
     film_tmdb_id/2,
     film_genre/2,
     film_actor/2,
     film_director/2.
+  :- initialization(set_tmdb_api_key('bccc509894efa9e817a1152273191223')).
 % Static file handlers
 :- http_handler('/style.css', http_reply_file('style.css', []), []).
 :- http_handler('/mascote.jpg', http_reply_file('mascote.jpg', []), []).
@@ -361,35 +359,7 @@ recommend_myfilms_page(_Request) :-
               script([], 'alert("Please login first"); window.location.href = "/login";')
             ]
         )
-    ;  % Logged-in user: generate recommendations
-       K = 10,        % number of neighbors
-       N = 10,        % number of recs
-       ( hybrid_recommend(UserID, K, N, RecIDs, Counts) -> true ; RecIDs = [], Counts = counts{knn:0,genre:0,popular:0,random:0} ),
-       % Build list items for each recommended film
-       findall(li([Title, ' (', Count, ')']),
-               ( member(FilmID, RecIDs),
-                 db(FilmID, name, Title),
-                 % Determine which source contributed this recommendation
-                 ( member(FilmID, Counts.knn_list) -> Count = Counts.knn
-                 ; member(FilmID, Counts.genre_list) -> Count = Counts.genre
-                 ; member(FilmID, Counts.popular_list) -> Count = Counts.popular
-                 ; Count = Counts.random )
-               ), FilmItems),
-       % Render page
-       reply_html_page(
-           title('Recommended Films - KNN Recommender'),
-           [ \page_wrapper('Recommended Films', [
-                 h1('Personalized Recommendations'),
-                 p(['Source counts: KNN=', Counts.knn, ', Genre=', Counts.genre,
-                    ', Popular=', Counts.popular, ', Random=', Counts.random]),
-                 ul(FilmItems),
-                 p(a([href('/')], 'Return Home'))
-             ])
-           ]
-       )
     ).
-
-
 %% Recommendation based on specific questions (FORM)
 recommend_questions_form(_Request) :-
     (   http_session_data(user(UserID))
@@ -668,9 +638,6 @@ show_films_page(_Request) :-
             ])
     ;  
     % after you have UserID, films list etc.
-    load_all_user_films_metadata(UserID),
-
-     
     findall(FilmName,
                 ( db2(UserID, film, FilmID),
                   db(FilmID, name, FilmName)
@@ -678,8 +645,6 @@ show_films_page(_Request) :-
                 FilmsRaw),
         sort(FilmsRaw, Films),  % Remove duplicates and sort alphabetically
         films_html(Films, FilmHtml),
-
-
         page_wrapper('Your Films', [
             h1('Your Film List'),
             FilmHtml,

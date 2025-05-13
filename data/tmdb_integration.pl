@@ -73,6 +73,8 @@ tmdb_fetch_details(ID, Genres) :-
     close(In),
     findall(G.name, member(G, Dict.genres), Genres).
 
+
+
 %% tmdb_fetch_credits(+TMDBID, -Actors, -Directors)
 %% Grabs up to 5 cast members and all directors.
 tmdb_fetch_credits(ID, Actors, Directors) :-
