@@ -1137,18 +1137,21 @@ film_page(Request) :-
     ; atomic_list_concat(Genres, ', ', GS),
       GenresEl = p([b('Genres: '), span(GS)])
     ),
-    % — chama o TMDb para obter sinopse e elenco —
+
+    % — call your TMDb helper to fetch plot & cast —
     get_tmdb_details(FilmId, Overview, ActorsList),
-    PlotEl   = p([b('Sinopse: '), span(Overview)]),
+    PlotEl   = p([b('Synopsis: '), span(Overview)]),
     atomic_list_concat(ActorsList, ', ', ActorsStr),
-    ActorsEl = p([b('Elenco: '), span(ActorsStr)]),
-    % build imdb link
-    format(atom(IMDbUrl), 'https://www.imdb.com/title/~w/', [FilmId]), IMDbLink = p([
-    b('IMDb: '),
-    a([ href(IMDbUrl),
-        target('_blank'),
-        style('font-family: "Copperplate", sans-serif; color: #1a0dab; text-decoration:underline;')
-      ], IMDbUrl)
+    ActorsEl = p([b('Cast: '), span(ActorsStr)]),
+
+    % IMDb link
+    format(atom(IMDbUrl), 'https://www.imdb.com/title/~w/', [FilmId]),
+    IMDbLink = p([
+      b('IMDb: '),
+      a([ href(IMDbUrl),
+          target('_blank'),
+          style('font-family: "Copperplate", sans-serif; color: #1a0dab; text-decoration:underline;')
+        ], IMDbUrl)
     ]),
 
     % 4. Common button styling
@@ -1159,29 +1162,30 @@ film_page(Request) :-
     HoverIn  = "this.style.background='#ccc';",
     HoverOut = "this.style.background='#ddd';",
 
-    % 5. Conditionally build “Add” and “Rate” buttons, side by side
+    % 5. Build buttons list only if logged in
     ( http_session_data(user(_)) ->
         format(atom(AddHref),  '/addfilm_submit?film_id=~w', [FilmId]),
         format(atom(RateHref), '/ratefilm?film_id=~w',        [FilmId]),
-        Buttons = p([
-          a([ href(AddHref),
-              style('font-family: "Copperplate", sans-serif; font-size:17px;
-                font-weight:300; background:#007BFF;color:#fff; margin:10px; padding:4px 8px;
-                border:none; border-radius:4px;
-                text-decoration:none; cursor:pointer;'),
-              onmouseover("this.style.background='#0056FF';"),
-              onmouseout("this.style.background='#007BFF';")
-            ], 'Add'),
-          a([ href(RateHref),
-              style('font-family: "Copperplate", sans-serif; font-size:17px;
-                font-weight:300; background:#e67e22;color:#fff; margin:10px; padding:4px 8px;
-                border:none; border-radius:4px;
-                text-decoration:none; cursor:pointer;'),
-              onmouseover("this.style.background='#d35400';"),
-              onmouseout("this.style.background='#e67e22';")
-            ], 'Rate')
-        ])
-    ; Buttons = []
+        ButtonsList = [
+          p([
+            a([ href(AddHref),
+                style('font-family:"Copperplate",sans-serif;font-weight:bold;
+                       margin-right:10px;background:#007BFF;color:#fff;
+                       border:none;border-radius:4px;cursor:pointer;
+                       text-decoration:none;padding:4px 8px;'),
+                onmouseover("this.style.background='#0056FF';"),
+                onmouseout("this.style.background='#007BFF';")
+              ], 'Add to My Films'),
+            a([ href(RateHref),
+                style('font-family:"Copperplate",sans-serif;font-weight:bold;
+                       background:#e67e22;color:#fff;border:none;
+                       border-radius:4px;cursor:pointer;text-decoration:none;padding:4px 8px;'),
+                onmouseover("this.style.background='#d35400';"),
+                onmouseout("this.style.background='#e67e22';")
+              ], 'Rate')
+          ])
+        ]
+    ; ButtonsList = []
     ),
 
     % 6. Core film info
@@ -1189,17 +1193,17 @@ film_page(Request) :-
       h1(b(Name)),
       p([b('Year: '),      span(Year)]),
       p([b('Country: '),   span(Country)]),
-      p([b('Director: '),span(Producer)]),
+      p([b('Director: '),  span(Producer)]),
       p([b('Rating: '),    span(Rating)]),
       GenresEl,
       PlotEl,
       ActorsEl,
-      IMDbLink,
-      Buttons
+      IMDbLink
     ],
 
-    % 7. Footer navigation
-    append(Core, [
+    % 7. Assemble everything
+    append(Core, ButtonsList, WithButtons),
+    append(WithButtons, [
       p(a([ href('/showfilms'),
              style(BtnStyle), onmouseover(HoverIn), onmouseout(HoverOut)
            ], 'Show Your Films')),
@@ -1213,6 +1217,7 @@ film_page(Request) :-
 
     % 8. Render
     page_wrapper([Name], FullBody).
+
 
 
 %% This DCG emits an “Add” link iff there’s a logged‑in user.
