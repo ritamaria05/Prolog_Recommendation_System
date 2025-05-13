@@ -15,14 +15,9 @@
 :- ensure_loaded('recommend.pl'). % Question-based recommendations
 :- use_module(tmdb_integration).
 :- ensure_loaded('tmdb_integration.pl'). % TMDb integration
-:- ensure_loaded('knn.pl'). % KNN-based recommendations
-:- use_module(rating).
-:- dynamic
-    film_tmdb_id/2,
-    film_genre/2,
-    film_actor/2,
-    film_director/2.
-  :- initialization(set_tmdb_api_key('bccc509894efa9e817a1152273191223')).
+:- initialization(set_tmdb_api_key('bccc509894efa9e817a1152273191223')).
+:- use_module(rating).            % novo
+:- initialization(init_ratings_db).
 % Static file handlers
 :- http_handler('/style.css', http_reply_file('style.css', []), []).
 :- http_handler('/mascote.jpg', http_reply_file('mascote.jpg', []), []).
@@ -348,18 +343,56 @@ recommendation_page(_Request) :-
           ], 'Return Home'))
     ]).
 
-
-%% Recommendation page using KNN-based recommendations
+%% Recommendation based on my film list
 recommend_myfilms_page(_Request) :-
-    ( http_session_data(user(UserID)) -> true ; UserID = none ),
-    ( UserID == none ->
-        reply_html_page(
+    (   http_session_data(user(UserID))
+    ->  true
+    ;   UserID = none
+    ),
+    (   UserID == none
+    ->  reply_html_page(
             title('Recommendation - Login Required'),
             [ \current_user_info,
               script([], 'alert("Please login first"); window.location.href = "/login";')
-            ]
-        )
+            ]);   % Passo 1: Filmes que o usuário já viu
+        findall(FilmID,
+                db2(UserID, film, FilmID),
+                UserFilmIDs),
+
+        % Passo 2: Gêneros desses filmes
+        findall(Genre,
+                ( member(FID, UserFilmIDs),
+                  db(FID, genre, Genre)
+                ),
+                GenresRaw),
+        sort(GenresRaw, Genres),
+
+        % Passo 3: Buscar filmes do mesmo género, que o usuário ainda não viu
+        findall(RecommendedFilm,
+                ( member(G, Genres),
+                  db(RecFilmID, genre, G),
+                  \+ member(RecFilmID, UserFilmIDs),
+                  db(RecFilmID, name, RecommendedFilm)
+                ),
+                RecsRaw),
+        sort(RecsRaw, Recs),
+
+        % Passo 4: Gerar HTML e exibir recomendações
+        films_html(Recs, RecHtml),
+        page_wrapper('Recommended Films', [
+            h1('Recommended Based on Your Film List'),
+            (Recs == [] 
+            ->
+                (   p('No recommendations available.'),
+                    p(a([href('/add_films')], 'Go to Add Films first'))
+                )
+            ;  % Caso haja recomendações
+                RecHtml
+            ),
+            p(a([href('/')], 'Return Home'))
+        ])
     ).
+
 %% Recommendation based on specific questions (FORM)
 recommend_questions_form(_Request) :-
     (   http_session_data(user(UserID))
@@ -623,6 +656,7 @@ remove_film_submit(Request) :-
         p(a([href('/showfilms')], 'See My Films'))
     ]).
 
+
 %% Show Films Page: shows the list of films for the currently logged in user.
 %% If no user is logged in, it shows a pop-up and redirects to the login page.
 show_films_page(_Request) :-
@@ -637,7 +671,7 @@ show_films_page(_Request) :-
               script([], 'alert("Please login first"); window.location.href = "/login";')
             ])
     ;  
-    % after you have UserID, films list etc.
+     
     findall(FilmName,
                 ( db2(UserID, film, FilmID),
                   db(FilmID, name, FilmName)
@@ -645,8 +679,10 @@ show_films_page(_Request) :-
                 FilmsRaw),
         sort(FilmsRaw, Films),  % Remove duplicates and sort alphabetically
         films_html(Films, FilmHtml),
+        
         page_wrapper('Your Films', [
             h1('Your Film List'),
+
             FilmHtml,
             % styled “Return Home” button
             p(a([ href('/'),
