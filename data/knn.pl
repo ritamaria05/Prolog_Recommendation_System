@@ -1,6 +1,4 @@
-:- [ratingsdb].
-:- [movie].
-
+:- module(knn, [hybrid_recommend/5]).
 
 
 % item_vector(Item, Vector) — vetor com tuplos User-Score
@@ -142,7 +140,8 @@ most_frequent(List, Most) :-
         member(Item, List),
         aggregate_all(count, member(Item, List), Freq)
     ), Freqs),
-    sort(0, @>=, Freqs, [MostFreq-Most|_]).
+    sort(0, @>=, Freqs, [_-Most|_]).
+
 
 % Recomenda filmes aleatórios
 random_good_movies(User, N, List) :-

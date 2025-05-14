@@ -14,6 +14,7 @@
 :- ensure_loaded('users.pl').  % User management and movie DB
 :- use_module(library(http/http_files)). % Serve static files
 :- ensure_loaded('recommend.pl'). % Question-based recommendations
+:- use_module(knn).
 :- use_module(tmdb_integration).
 :- ensure_loaded('tmdb_integration.pl'). % TMDb integration
 :- initialization(set_tmdb_api_key('bccc509894efa9e817a1152273191223')).
@@ -328,7 +329,7 @@ recommendation_page(_Request) :-
              style(BtnStyle),
              onmouseover(HoverIn),
              onmouseout(HoverOut)
-           ], 'Based on Your Film List')),
+           ], 'Based on Your Reviews')),
         p(a([
              href('/recommend_questions'),
              style(BtnStyle),
@@ -344,159 +345,179 @@ recommendation_page(_Request) :-
           ], 'Return Home'))
     ]).
 
-%% Recommendation based on my film list
+%% Recommendation based on my film list, using the hybrid recommender
 recommend_myfilms_page(_Request) :-
+    % 1. Ensure user is logged in
     (   http_session_data(user(UserID))
     ->  true
     ;   UserID = none
     ),
+    % 2. Redirect if not logged in
     (   UserID == none
     ->  reply_html_page(
-            title('Recommendation - Login Required'),
-            [ \current_user_info,
-              script([], 'alert("Please login first"); window.location.href = "/login";')
-            ]);   % Passo 1: Filmes que o usuário já viu
-        findall(FilmID,
-                db2(UserID, film, FilmID),
-                UserFilmIDs),
-
-        % Passo 2: Gêneros desses filmes
-        findall(Genre,
-                ( member(FID, UserFilmIDs),
-                  db(FID, genre, Genre)
+           title('Recommendation – Login Required'),
+           [ \current_user_info,
+             script([], 'alert("Please login first"); window.location.href="/login";')
+           ]
+        )
+    ;   % 3. Compute hybrid recommendations
+        K = 10, N = 10,
+        ( hybrid_recommend(UserID, K, N, RecIDs, Counts)
+        -> true
+        ;  RecIDs = [], Counts = _{knn:0,genre:0,popular:0,random:0}
+        ),
+        % 4. Map to titles
+        findall(Title,
+                ( member(_-FilmID, RecIDs),
+                  db(FilmID, name, Title)
                 ),
-                GenresRaw),
-        sort(GenresRaw, Genres),
-
-        % Passo 3: Buscar filmes do mesmo género, que o usuário ainda não viu
-        findall(RecommendedFilm,
-                ( member(G, Genres),
-                  db(RecFilmID, genre, G),
-                  \+ member(RecFilmID, UserFilmIDs),
-                  db(RecFilmID, name, RecommendedFilm)
-                ),
-                RecsRaw),
-        sort(RecsRaw, Recs),
-
-        % Passo 4: Gerar HTML e exibir recomendações
-        films_html(Recs, RecHtml),
+                Titles),
+        % 5. Button styling
+        BtnStyle = 'font-family:"Copperplate",sans-serif; font-size:17px; font-weight:300; color:#222; margin:10px; padding:4px 8px; background:#ddd; border:none; border-radius:4px; text-decoration:none; cursor:pointer;',
+        HoverIn  = "this.style.background='#ccc';",
+        HoverOut = "this.style.background='#ddd';",
+        % 6. Render page: one DCG call for list + styled button
         page_wrapper('Recommended Films', [
-            h1('Recommended Based on Your Film List'),
-            (Recs == [] 
-            ->
-                (   p('No recommendations available.'),
-                    p(a([href('/add_films')], 'Go to Add Films first'))
-                )
-            ;  % Caso haja recomendações
-                RecHtml
-            ),
-            p(a([href('/')], 'Return Home'))
+            h1('Recommended for you'),
+            p([
+              'Contributions: ',
+              'KNN=',Counts.knn,', ',
+              'Genre=',Counts.genre,', ',
+              'Popular=',Counts.popular,', ',
+              'Random=',Counts.random
+            ]),
+            \render_recommendations(Titles),
+            p(a([
+                href('/'),
+                style(BtnStyle),
+                onmouseover(HoverIn),
+                onmouseout(HoverOut)
+              ], 'Return Home'))
         ])
     ).
+
+%% Helper DCG to either show links or fallback
+render_recommendations([]) -->
+    html([
+      p('No recommendations available.'),
+      p(a([
+            href('/addfilm'),
+            style('font-family:"Copperplate",sans-serif;color:#222;text-decoration:none;'),
+            onmouseover("this.style.textDecoration='underline';"),
+            onmouseout("this.style.textDecoration='none';")
+          ],
+          'Add more films to improve recommendations'
+      ))
+    ]).
+
+%% Show recommendations using same <p> style as showfilms_page
+render_recommendations(Titles) -->
+    { Titles \= [] },  % only the non-empty case
+    list_film_elements_rec(Titles).
+
+list_film_elements_rec([]) --> [].
+list_film_elements_rec([Name|T]) -->
+  {
+    % Look up ID and optional year
+    db(FilmId, name, Name),
+    ( db(FilmId, year, Year)
+    -> format(string(YearStr), " (~w)", [Year])
+    ;  YearStr = ""
+    ),
+    % Build the link to our film_page/1
+    format(string(DetailLink), "/film?film_id=~w", [FilmId])
+  },
+  html(p([
+    % Film title now links to /film?film_id=…
+    a([
+        href(DetailLink),
+        style('font-family:"Copperplate",sans-serif;color:#222;text-decoration:none;'),
+        onmouseover("this.style.textDecoration='underline';"),
+        onmouseout("this.style.textDecoration='none';")
+      ],
+      b(Name)
+    ),
+    span(YearStr)
+  ])),
+  list_film_elements_rec(T).
 
 %% Recommendation based on specific questions (FORM)
+%% Recommendation questions form (no login required)
 recommend_questions_form(_Request) :-
-    (   http_session_data(user(UserID))
-    ->  true
-    ;   UserID = none
-    ),
-    (   UserID == none
-    ->  % Not logged in: pop-up + redirect
-        reply_html_page(
-          title('Recommendation – Login Required'),
-          [ \current_user_info,
-            script([], 'alert("Please login first"); window.location.href = "/login";')
-          ]
-        )
-    ;   % Logged in: render the questions form
-        page_wrapper('Recommendation by Questions', [
-          h1('Movie Recommendations'),
-          form([ action('/recommend_questions_result'),
-                 method(get) ],
-               [
-                 \render_question(1,'Do you prefer older movies (pre-2000)?',
-                                  ['No preference'=0,'Yes (pre-2000)'=1,'No, modern movies'=2],0),
-                 \render_question(2,'What types of movies are you in the mood for?',
-                                  ['No preference'=0,'Emotional'=1,'Historical'=2,
-                                   'Cerebral'=3,'Adventurous'=4,'Funny'=5],0),
-                 \render_question(3,'Do you have time for longer movies?',
-                                  ['No preference'=0,'Yes (>119min)'=1,'No (<120min)'=2],0),
-                 \render_question(4,'Which country\'s movie do you prefer?',
-                                  ['No preference'=0,'US'=1,'UK'=2,'Canada'=3,
-                                   'Japan'=4,'Korea'=5,'China'=6],0),
-                 \render_question(5,'Do you prefer high-scoring movies?',
-                                  ['No preference'=0,'Yes (>7)'=1],0),
-                 p(input([
-                     type(submit),
-                     value('Show Recommendations'),
-                     style('font-family: "Copperplate", sans-serif; font-size: 17px; font-weight: 300; color: #222; margin:10px; padding:4px 8px; background:#ddd; border:none; border-radius:4px; cursor:pointer;'),
-                     onmouseover("this.style.background='#ccc';"),
-                     onmouseout("this.style.background='#ddd';")
-                   ]))
-               ]),
-          p(a([ href('/'),
-                 style('font-family: "Copperplate", sans-serif; font-size: 17px; font-weight: 300; color: #222; margin:10px; padding:4px 8px; background:#ddd; border:none; border-radius:4px; text-decoration:none; cursor:pointer;'),
+    page_wrapper('Recommendation by Questions', [
+      h1('Movie Recommendations'),
+      form([ action('/recommend_questions_result'),
+             method(get)
+           ], [
+             \render_question(1,'Do you prefer older movies (pre-2000)?',
+                              ['No preference'=0,'Yes (pre-2000)'=1,'No, modern movies'=2],0),
+             \render_question(2,'What types of movies are you in the mood for?',
+                              ['No preference'=0,'Emotional'=1,'Historical'=2,
+                               'Cerebral'=3,'Adventurous'=4,'Funny'=5],0),
+             \render_question(3,'Do you have time for longer movies?',
+                              ['No preference'=0,'Yes (>119min)'=1,'No (<120min)'=2],0),
+             \render_question(4,'Which country\'s movie do you prefer?',
+                              ['No preference'=0,'US'=1,'UK'=2,'Canada'=3,
+                               'Japan'=4,'Korea'=5,'China'=6],0),
+             \render_question(5,'Do you prefer high-scoring movies?',
+                              ['No preference'=0,'Yes (>7)'=1],0),
+             p(input([
+                 type(submit),
+                 value('Show Recommendations'),
+                 style('font-family: \"Copperplate\", sans-serif; font-size: 17px; font-weight: 300; color: #222; margin:10px; padding:4px 8px; background:#ddd; border:none; border-radius:4px; cursor:pointer;'),
                  onmouseover("this.style.background='#ccc';"),
                  onmouseout("this.style.background='#ddd';")
-               ],
-               'Return Home'))
-        ])
-    ).
+               ]))
+           ]),
+      p(a([ href('/'),
+             style('font-family: \"Copperplate\", sans-serif; font-size: 17px; font-weight: 300; color: #222; margin:10px; padding:4px 8px; background:#ddd; border:none; border-radius:4px; text-decoration:none; cursor:pointer;'),
+             onmouseover("this.style.background='#ccc';"),
+             onmouseout("this.style.background='#ddd';")
+           ],
+           'Return Home'))
+    ]).
+
 
     
 %% Recommendation based on specific questions (RESULT)
 recommend_questions_result(Request) :-
-    % 1. Get session user or none
-    ( http_session_data(user(UserID)) -> true ; UserID = none ),
-
-    % 2. If not logged in, pop up + redirect
-    ( UserID == none ->
-        reply_html_page(
-          title('Recommendation – Login Required'),
-          [ \current_user_info,
-            script([], 'alert("Please login first"); window.location.href = "/login";')
-          ])
-    ; % 3. Logged in: read answers & compute
-      http_parameters(Request, [
+    % Read answers & compute recommendations
+    http_parameters(Request, [
         ans1(A1,[optional(true),default('0')]),
         ans2(A2,[optional(true),default('0')]),
         ans3(A3,[optional(true),default('0')]),
         ans4(A4,[optional(true),default('0')]),
         ans5(A5,[optional(true),default('0')])
-      ]),
-      maplist(atom_number_default(0), [A1,A2,A3,A4,A5], [N1,N2,N3,N4,N5]),
-      findall(F, recommend(N1,N2,N3,N4,N5,F), Raw),
-      sort(Raw, Films),
+    ]),
+    maplist(atom_number_default(0), [A1,A2,A3,A4,A5], [N1,N2,N3,N4,N5]),
+    findall(F, recommend(N1,N2,N3,N4,N5,F), Raw),
+    sort(Raw, Films),
 
-      % 4. Build a single UL with a sub‐DCG call to list_films//1
-      ( Films = [] ->
-          FilmsBlock = [ p(style('font-family:"Copperplate",sans-serif;font-size:16px;color:#444;'),
-                            'No matches found — try again with different answers.')
-                       ]
-      ; FilmsBlock = [ ul([ style('list-style:none;margin:20px 0;padding:0;') ],
-                          \list_films(Films))
-                     ]
-      ),
+    % Build the recommendations block
+    ( Films = [] ->
+        Block = [ p(style('font-family:"Copperplate",sans-serif;font-size:16px;color:#444;'),
+                    'No matches found — try again with different answers.') ]
+    ;   Block = [ ul([ style('list-style:none; margin:20px 0; padding:0;') ],
+                     \list_films(Films)) ]
+    ),
 
-      % 5. Button styling
-      BtnStyle = 'font-family:"Copperplate",sans-serif;font-size:17px;font-weight:300;color:#222;
-                  margin:10px;padding:4px 8px;background:#ddd;border:none;border-radius:4px;
-                  text-decoration:none;cursor:pointer;',
-      HoverIn  = "this.style.background='#ccc';",
-      HoverOut = "this.style.background='#ddd';",
+    % Button styling
+    BtnStyle = 'font-family:"Copperplate",sans-serif; font-size:17px; font-weight:300; color:#222; margin:10px; padding:4px 8px; background:#ddd; border:none; border-radius:4px; text-decoration:none; cursor:pointer;',
+    HoverIn  = "this.style.background='#ccc';",
+    HoverOut = "this.style.background='#ddd';",
 
-      % 6. Finally render
-      page_wrapper('Your Movie Recommendations', [
-          h1([style('font-family:"Copperplate",sans-serif;color:#222;')],
-             'We recommend the following movies:'),
-          div([ class(container) ], FilmsBlock),
-          p(a([ href('/'),
-                 style(BtnStyle),
-                 onmouseover(HoverIn),
-                 onmouseout(HoverOut)
-               ], 'Return Home'))
-      ])
-    ).
+    % Render the page
+    page_wrapper('Your Movie Recommendations', [
+        h1([style('font-family:"Copperplate",sans-serif;color:#222;')],
+           'We recommend the following movies:'),
+        div([ class(container) ], Block),
+        p(a([
+            href('/'),
+            style(BtnStyle),
+            onmouseover(HoverIn),
+            onmouseout(HoverOut)
+          ], 'Return Home'))
+    ]).
 
 
 %% Auxiliar: lista de <li> para cada filme
@@ -596,7 +617,7 @@ add_film_page(_Request) :-
               ], 'Return Home'))
         ])
     ;   reply_html_page(
-            title('Add Film – Login Required'),
+            title('Add Film - Login Required'),
             [ \current_user_info,
               script([], 'alert("Please login first"); window.location.href = "/login";')
             ])
@@ -608,13 +629,34 @@ add_film_page(_Request) :-
 add_film_submit(Request) :-
     http_parameters(Request, [ film_id(FilmID, []) ]),
     add_film_msg(FilmID, Message),
+    % Define button style
+    BtnStyle = 'font-family:"Copperplate",sans-serif; font-size:17px; font-weight:300; color:#222; margin:10px; padding:4px 8px; background:#ddd; border:none; border-radius:4px; text-decoration:none; cursor:pointer;',
+    HoverIn  = "this.style.background='#ccc';",
+    HoverOut = "this.style.background='#ddd';",
+    % Render the page with styled buttons
     page_wrapper('Add Film Result', [
         h1('Add Film'),
         p(Message),
-        p(a([href('/')], 'Return Home')),
-        p(a([href('/showfilms')], 'See My Films')),
-        p(a([href('/allfilms')], 'See All Films'))
+        p(a([
+            href('/'),
+            style(BtnStyle),
+            onmouseover(HoverIn),
+            onmouseout(HoverOut)
+        ], 'Return Home')),
+        p(a([
+            href('/showfilms'),
+            style(BtnStyle),
+            onmouseover(HoverIn),
+            onmouseout(HoverOut)
+        ], 'See My Films')),
+        p(a([
+            href('/allfilms'),
+            style(BtnStyle),
+            onmouseover(HoverIn),
+            onmouseout(HoverOut)
+        ], 'See All Films'))
     ]).
+
 
 
 %% Remove Film Page: If a user is logged in, displays a form to remove a film.
@@ -650,7 +692,7 @@ remove_film_page(_Request) :-
               ], 'Return Home'))
         ])
     ;   reply_html_page(
-            title('Remove Film – Login Required'),
+            title('Remove Film - Login Required'),
             [ \current_user_info,
               script([], 'alert("Please login first"); window.location.href = "/login";')
             ])
@@ -661,12 +703,28 @@ remove_film_page(_Request) :-
 remove_film_submit(Request) :-
     http_parameters(Request, [ film_id(FilmID, []) ]),
     remove_film_msg(FilmID, Message),
+    % Define button style
+    BtnStyle = 'font-family:"Copperplate",sans-serif; font-size:17px; font-weight:300; color:#222; margin:10px; padding:4px 8px; background:#ddd; border:none; border-radius:4px; text-decoration:none; cursor:pointer;',
+    HoverIn  = "this.style.background='#ccc';",
+    HoverOut = "this.style.background='#ddd';",
+    % Render the page with styled buttons
     page_wrapper('Remove Film Result', [
         h1('Remove Film'),
         p(Message),
-        p(a([href('/')], 'Return Home')),
-        p(a([href('/showfilms')], 'See My Films'))
+        p(a([
+            href('/'),
+            style(BtnStyle),
+            onmouseover(HoverIn),
+            onmouseout(HoverOut)
+        ], 'Return Home')),
+        p(a([
+            href('/showfilms'),
+            style(BtnStyle),
+            onmouseover(HoverIn),
+            onmouseout(HoverOut)
+        ], 'See My Films'))
     ]).
+
 
 
 %% Show Films Page: shows the list of films for the currently logged in user.
@@ -1030,7 +1088,7 @@ most_recent_rating([R1, R2 | Rest], MostRecent) :-
 
 
 %% all_films_page(+Request)
-%% Displays all films with a title‐search box and (–) filters removed for brevity.
+%% Displays all films with a title‐search box and (-) filters removed for brevity.
 all_films_page(Request) :-
     % 1. Parse GET parameters
     http_parameters(Request, [
@@ -1244,7 +1302,7 @@ add_link(FilmId) -->
 add_link(_) --> [].  % otherwise, emit nothing
 
 %% film_list_items(+Names)// 
-%% Renders each film as “Name (Year) – Rating [Add]” with spacing,
+%% Renders each film as “Name (Year) - Rating [Add]” with spacing,
 %% and injects the add_link//1 into the <li>.
 film_list_items([]) --> [].
 film_list_items([Name|T]) -->

@@ -21,3 +21,5 @@ rating('Max', tt0408060, 1, '', date(2025, 5, 8, 12, 41, 50.05452609062195, -360
 rating('Rita', tt0816692, 5, 'Masterpiece :D', date(2025, 5, 12, 23, 17, 55.84659695625305, -3600, 'WEST', true)).
 rating('Rita', tt0088680, 5, '', date(2025, 5, 14, 0, 2, 10.274213075637817, -3600, 'WEST', true)).
 rating('Rita', tt0111161, 5, '', date(2025, 5, 14, 0, 2, 17.574419021606445, -3600, 'WEST', true)).
+rating(new12, tt8579674, 4, 'good film.', date(2025, 5, 14, 23, 48, 18.423645973205566, -3600, 'GMT Summer Time', true)).
+rating(new12, tt0408060, 5, '1.2.3. "1" is best :D', date(2025, 5, 14, 23, 52, 29.70493507385254, -3600, 'GMT Summer Time', true)).
