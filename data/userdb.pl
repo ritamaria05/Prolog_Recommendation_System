@@ -99,5 +99,4 @@ assert(db2('Max',film,tt6806448)).
 assert(db2('Max',film,tt0408060)).
 retractall(db2('Max',film,tt0408060),1).
 retractall(db2('Max',film,tt0004972),1).
-assert(db2('Rita',film,tt0111161)).
-assert(db2('Rita',film,tt0088680)).
+assert(db2('Rita',film,tt0209144)).
