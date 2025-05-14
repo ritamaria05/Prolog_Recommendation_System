@@ -507,12 +507,23 @@ list_films([Title|T]) -->
   {
     db(Id, name, Title),
     db(Id, year, Year),
-    LiStyle = 'margin-bottom:16px; list-style:none; font-family:"Copperplate",sans-serif;',
+    % same list‐item styling you already had:
+    LiStyle   = 'margin-bottom:16px; list-style:none; font-family:"Copperplate",sans-serif;',
+    % match link styling from list_film_elements//1:
+    LinkStyle = 'font-family:"Copperplate",sans-serif;color:#222;text-decoration:none;',
+    HoverIn   = "this.style.textDecoration='underline';",
+    HoverOut  = "this.style.textDecoration='none';",
     format(atom(DetailHref), '/film?film_id=~w', [Id]),
     format(atom(YearStr),    "(~w)", [Year])
   },
-  html(li([ style(LiStyle) ], [
-    a([ href(DetailHref) ], b(Title)),  % now goes to your Film Page
+  html(li([style(LiStyle)], [
+    a([ href(DetailHref),
+        style(LinkStyle),
+        onmouseover(HoverIn),
+        onmouseout(HoverOut)
+      ],
+      b(Title)
+    ),
     span([], ' '),
     span([], YearStr)
   ])),
