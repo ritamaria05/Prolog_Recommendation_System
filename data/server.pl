@@ -1096,7 +1096,7 @@ get_tmdb_details(MovieId, Overview, ActorsList) :-
   tmdb_api_key(Key),
   % Monta a URL: movie/{id}?append_to_response=credits
   format(atom(URL),
-         'https://api.themoviedb.org/3/movie/~w?api_key=~w&language=en-US&append_to_response=credits',
+         'https://api.themoviedb.org/3/movie/~w?api_key=~w&language=pt-BR&append_to_response=credits',
          [MovieId, Key]),
   % Faz a requisição HTTP
   setup_call_cleanup(
