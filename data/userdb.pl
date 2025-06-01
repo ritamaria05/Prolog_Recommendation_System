@@ -1,19 +1,11 @@
 
 assert(db2('Orlando',userName,'Orlando')).
-assert(db2('Orlando',password,orlando)).
+assert(db2('Orlando',password,'$pbkdf2-sha512$t=131072$B2zt9CrhTzeKWk1LGwB6bA$PFsxRmFrFfmWopdYJvHazb5Wd6Tb3n576PdHhgYFmL/aOKEQ4A7p/VvQxcp77XrsVhQ4hW23bjj3edXYEIoxKA')).
 assert(db2('Orlando',film,tt0004972)).
 assert(db2('Orlando',film,tt0012349)).
 retractall(db2(_,film,tt0012349),1).
 assert(db2('Max',userName,'Max')).
-assert(db2('Max',password,max)).
-assert(db2('Test1',userName,'Test1')).
-assert(db2('Test1',password,test1)).
-assert(db2('Test2',userName,'Test2')).
-assert(db2('Test2',password,test2)).
-assert(db2(test3,userName,test3)).
-assert(db2(test3,password,test3)).
-assert(db2('123',userName,'123')).
-assert(db2('123',password,'123')).
+assert(db2('Max',password,'$pbkdf2-sha512$t=131072$ifNHIcP6whmD5Z2hzvhsfw$P9jYad6335fhrjpKKddWvE2hYesvAZ6pVyhuqrPZ7//USA79IFZkjIqbMg6O3nEwYY22A1CxAsGEUcI6G2eJ2g')).
 assert(db2('Max',film,tt0015864)).
 assert(db2('Max',film,tt0004972)).
 assert(db2('Max',film,tt0018773)).
@@ -31,7 +23,7 @@ assert(db2('Testy',film,tt0004972)).
 assert(db2('Max',film,tt0017925)).
 assert(db2('Max',film,tt0020629)).
 assert(db2('Rita',userName,'Rita')).
-assert(db2('Rita',password,'1810')).
+assert(db2('Rita',password,'$pbkdf2-sha512$t=131072$mA0R3EuHT4eFIhWwCbpf2A$cZ/FLmvQhu/WuwjgPevac7PzMDOEYe69rff/QYLcxEsi6tecxEceDIG8ZH0iUBTQesVx62+bCIk0DyHxEdZAkA')).
 assert(db2('Rita',film,tt3783958)).
 assert(db2('Rita',film,tt0816692)).
 assert(db2('Rita',film,tt0468569)).
@@ -118,3 +110,5 @@ retractall(db2(new12,film,tt1542344),1).
 retractall(db2(new12,film,tt2024544),1).
 retractall(db2(new12,film,tt4190530),1).
 retractall(db2(new12,film,tt8579674),1).
+assert(db2(admin,userName,admin)).
+assert(db2(admin,password,'$pbkdf2-sha512$t=131072$iB4l143gX2sydefmpCBKAQ$As2hvXdHUt+eCf1ZqqcWOm3PqliDYUrAw0F/Nq0BP0TQI2KOY/h8P/XgzOGR7VjMR+TouDMtr6Rps//+lGjH/A')).

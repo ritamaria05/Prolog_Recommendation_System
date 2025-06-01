@@ -2,12 +2,21 @@
 :- use_module(library(persistency)).
 :- persistent db2(id:atom, property:atom, value:atom).
 :- persistent db(id:atom, property:atom, value:atom).
-
 :- db_attach('userdb.pl', []).  % Persistent database file
 :- [movie].
 
 
 :- nb_setval(current_user, none).
+
+
+:- use_module(library(crypto)).
+
+
+hash_password(PlainPassword, HashedPassword) :-
+    crypto_password_hash(PlainPassword, HashedPassword).
+
+verify_password(PlainPassword, HashedPassword) :-
+    crypto_password_hash(PlainPassword, HashedPassword).
 
 new_user(User, Pass) :-
     new_user(User, Pass, Message),
@@ -16,7 +25,8 @@ new_user(User, Pass) :-
 new_user(Name, Password, Message) :-
     (   \+ db2(_, userName, Name)
     ->  assert_db2(Name, userName, Name),
-        assert_db2(Name, password, Password),
+        hash_password(Password, HashedPassword),
+        assert_db2(Name, password, HashedPassword),
         nb_setval(current_user, Name),
         Message = 'New User added and logged in'
     ;   Message = 'Username already exists.'
@@ -28,15 +38,18 @@ delete_user(Name) :-
     retractall_db2(ID, _, _),
     writeln('User deleted.').
 
+
+
 % Updated login predicate that returns a result message.
 login(User, Pass) :-
     login(User, Pass, Message),
     writeln(Message).
     
-login(Name, Password, Message) :- 
+login(Name, Password, Message) :-
     (   \+ db2(Name, _, _) 
     ->  Message = 'User not found'
-    ;   \+ db2(Name, password, Password)
+    ;   db2(Name, password, HashedPassword),
+        \+ verify_password(Password, HashedPassword)
     ->  Message = 'Wrong Password'
     ;   nb_setval(current_user, Name),
         Message = 'Login Successful'
