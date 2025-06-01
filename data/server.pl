@@ -1183,12 +1183,9 @@ get_tmdb_details(MovieId, Overview, ActorsList) :-
 %% URL: /film?film_id=tt1234567
 %% ----------------------------------------------------------------------------
 film_page(Request) :-
-    % 1. Pull the film_id from the URL
-    http_parameters(Request, [
-      film_id(FilmId, [atom])
-    ]),
+    http_parameters(Request, [ film_id(FilmId, [atom]) ]),
 
-    % 2. Lookup all the fields (default to 'Unknown'/'Unrated')
+    % 1. Lookup base fields
     ( db(FilmId, name,    Name)    -> true ; Name    = 'Unknown' ),
     ( db(FilmId, year,    Year)    -> true ; Year    = 'Unknown' ),
     ( db(FilmId, country, Country) -> true ; Country = 'Unknown' ),
@@ -1196,64 +1193,68 @@ film_page(Request) :-
     findall(G, db(FilmId, genre, G), Genres),
     ( db(FilmId, rating,  Rating) -> true ; Rating  = 'Unrated' ),
 
-    % 3. Build the Genres paragraph
+    % 2. Genre formatting
     ( Genres = [] ->
         GenresEl = p([b('Genres: '), 'None listed'])
     ; atomic_list_concat(Genres, ', ', GS),
       GenresEl = p([b('Genres: '), span(GS)])
     ),
 
-    % — call your TMDb helper to fetch plot & cast —
+    % 3. TMDb integration: plot + cast
     get_tmdb_details(FilmId, Overview, ActorsList),
     PlotEl   = p([b('Synopsis: '), span(Overview)]),
     atomic_list_concat(ActorsList, ', ', ActorsStr),
     ActorsEl = p([b('Cast: '), span(ActorsStr)]),
 
-    % IMDb link
+    % 4. IMDb link
     format(atom(IMDbUrl), 'https://www.imdb.com/title/~w/', [FilmId]),
     IMDbLink = p([
       b('IMDb: '),
-      a([ href(IMDbUrl),
-          target('_blank'),
+      a([ href(IMDbUrl), target('_blank'),
           style('font-family: "Copperplate", sans-serif; color: #1a0dab; text-decoration:underline;')
         ], IMDbUrl)
     ]),
 
-    % 4. Common button styling
-    BtnStyle = 'font-family: "Copperplate", sans-serif; font-size:17px;
-                font-weight:300; color:#222; margin:10px; padding:4px 8px;
-                background:#ddd; border:none; border-radius:4px;
-                text-decoration:none; cursor:pointer;',
-    HoverIn  = "this.style.background='#ccc';",
-    HoverOut = "this.style.background='#ddd';",
-
-    % 5. Build buttons list only if logged in
+    % 5. Add/Rate buttons (only if logged in)
     ( http_session_data(user(_)) ->
-        format(atom(AddHref),  '/addfilm_submit?film_id=~w', [FilmId]),
-        format(atom(RateHref), '/ratefilm?film_id=~w',        [FilmId]),
-        ButtonsList = [
-          p([
-            a([ href(AddHref),
-                style('font-family:"Copperplate",sans-serif;font-weight:bold;
-                       margin-right:10px;background:#007BFF;color:#fff;
-                       border:none;border-radius:4px;cursor:pointer;
-                       text-decoration:none;padding:4px 8px;'),
-                onmouseover("this.style.background='#0056FF';"),
-                onmouseout("this.style.background='#007BFF';")
-              ], 'Add to My Films'),
-            a([ href(RateHref),
-                style('font-family:"Copperplate",sans-serif;font-weight:bold;
-                       background:#e67e22;color:#fff;border:none;
-                       border-radius:4px;cursor:pointer;text-decoration:none;padding:4px 8px;'),
-                onmouseover("this.style.background='#d35400';"),
-                onmouseout("this.style.background='#e67e22';")
-              ], 'Rate')
-          ])
-        ]
+        format(atom(AddHref), '/addfilm_submit?film_id=~w', [FilmId]),
+        format(atom(RateHref), '/ratefilm?film_id=~w', [FilmId]),
+        ButtonsList = [ p([
+          a([ href(AddHref),
+              style('font-family:"Copperplate",sans-serif;font-weight:bold;
+                     margin-right:10px;background:#007BFF;color:#fff;
+                     border:none;border-radius:4px;cursor:pointer;
+                     text-decoration:none;padding:4px 8px;'),
+              onmouseover("this.style.background='#0056FF';"),
+              onmouseout("this.style.background='#007BFF';")
+            ], 'Add to My Films'),
+          a([ href(RateHref),
+              style('font-family:"Copperplate",sans-serif;font-weight:bold;
+                     background:#e67e22;color:#fff;border:none;
+                     border-radius:4px;cursor:pointer;text-decoration:none;padding:4px 8px;'),
+              onmouseover("this.style.background='#d35400';"),
+              onmouseout("this.style.background='#e67e22';")
+            ], 'Rate')
+        ]) ]
     ; ButtonsList = []
     ),
 
-    % 6. Core film info
+    % 6. Gather all user reviews for this film
+    findall(rating(User, FilmId, Stars, Review, TS),
+            rating(User, FilmId, Stars, Review, TS),
+            RatingsForFilm),
+
+    ( RatingsForFilm == []
+    -> ReviewsBlock = [h2([style('font-family:"Copperplate",sans-serif;margin-top:40px;padding-bottom:10px;border-bottom:1px solid #ccc;')], 'User Reviews'),
+                       p(style('font-family:"Copperplate",sans-serif;font-size:16px;color:#444;padding-bottom:15px;border-bottom:1px solid #ccc;'),
+                          'No reviews added yet.') ]
+    ; ReviewsBlock = [
+        h2([style('font-family:"Copperplate",sans-serif;margin-top:40px;padding-bottom:10px;border-bottom:1px solid #ccc;')], 'User Reviews'),
+        ul([ style('list-style:none; margin:20px 0; padding:0; font-family:"Copperplate",sans-serif;') ],
+           \film_rating_items(RatingsForFilm))
+      ]),
+
+    % 7. Assemble body
     Core = [
       h1(b(Name)),
       p([b('Year: '),      span(Year)]),
@@ -1266,40 +1267,60 @@ film_page(Request) :-
       IMDbLink
     ],
 
-    % 7. Assemble everything
     append(Core, ButtonsList, WithButtons),
-    append(WithButtons, [
+    append(WithButtons, ReviewsBlock, WithReviews),
+
+    append(WithReviews, [
       p(a([ href('/showfilms'),
-             style(BtnStyle), onmouseover(HoverIn), onmouseout(HoverOut)
+             style('font-family: "Copperplate", sans-serif; font-size:17px;
+                    font-weight:300; color:#222; margin:10px; padding:4px 8px;
+                    background:#ddd; border:none; border-radius:4px;
+                    text-decoration:none; cursor:pointer;'),
+             onmouseover("this.style.background='#ccc';"),
+             onmouseout("this.style.background='#ddd';")
            ], 'Show Your Films')),
       p(a([ href('/allfilms'),
-             style(BtnStyle), onmouseover(HoverIn), onmouseout(HoverOut)
+             style('font-family: "Copperplate", sans-serif; font-size:17px;
+                    font-weight:300; color:#222; margin:10px; padding:4px 8px;
+                    background:#ddd; border:none; border-radius:4px;
+                    text-decoration:none; cursor:pointer;'),
+             onmouseover("this.style.background='#ccc';"),
+             onmouseout("this.style.background='#ddd';")
            ], 'Show All Films')),
       p(a([ href('/'),
-             style(BtnStyle), onmouseover(HoverIn), onmouseout(HoverOut)
+             style('font-family: "Copperplate", sans-serif; font-size:17px;
+                    font-weight:300; color:#222; margin:10px; padding:4px 8px;
+                    background:#ddd; border:none; border-radius:4px;
+                    text-decoration:none; cursor:pointer;'),
+             onmouseover("this.style.background='#ccc';"),
+             onmouseout("this.style.background='#ddd';")
            ], 'Return Home'))
     ], FullBody),
 
     % 8. Render
-    page_wrapper([Name], FullBody).
+    page_wrapper(['Film: ', Name], FullBody).
 
+%% DCG to render each rating
+film_rating_items([]) --> [].
+film_rating_items([rating(User, _, Stars, Review, DT)|Rest]) -->
+  {
+    format_time(atom(DateText), '%H:%M on %Y-%m-%d', DT),
+    RatingStars = span([style('font-weight:bold;')], [Stars, '★']),
+    ( Review \== ''
+    -> ReviewBlock0 = [ div([ style('margin-top:5px; font-size:15px; font-style:italic;' )],
+                            ['"', Review, '"']) ]
+    ;  ReviewBlock0 = [] ),
+    append(ReviewBlock0,
+           [ hr([ style('border-top:1px solid #ccc; margin:10px 0;') ], []) ],
+           ReviewBlock)
+  },
+  html(li([style('margin-bottom:20px;')], [
+    h3([style('margin-top:10px;')], User),
+    div([], [RatingStars, span([style('margin-left:10px;')], DateText)])
+    | ReviewBlock
+  ])),
+  film_rating_items(Rest).
 
-
-%% This DCG emits an “Add” link iff there’s a logged‑in user.
-add_link(FilmId) -->
-    {
-        % only show if someone’s logged in
-        http_session_data(user(_)),
-        % build the URL for your add‑film handler
-        atom_concat('/addfilm_submit?film_id=', FilmId, Href)
-    },
-    html(a([ href(Href),
-            style('font-family: "Copperplate", sans-serif;font-weight: bold;margin-left:20px;color:#007BFF; text-decoration:none; cursor:pointer;'),
-            onmouseover("this.style.color='#0056FF'; this.style.textDecoration='underline';"),
-            onmouseout("this.style.color='#007BFF'; this.style.textDecoration='none';")
-           ],
-           'Add')).
-add_link(_) --> [].  % otherwise, emit nothing
 
 %% film_list_items(+Names)// 
 %% Renders each film as “Name (Year) - Rating [Add]” with spacing,

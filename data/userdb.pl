@@ -112,3 +112,5 @@ retractall(db2(new12,film,tt4190530),1).
 retractall(db2(new12,film,tt8579674),1).
 assert(db2(admin,userName,admin)).
 assert(db2(admin,password,'$pbkdf2-sha512$t=131072$iB4l143gX2sydefmpCBKAQ$As2hvXdHUt+eCf1ZqqcWOm3PqliDYUrAw0F/Nq0BP0TQI2KOY/h8P/XgzOGR7VjMR+TouDMtr6Rps//+lGjH/A')).
+assert(db2('Test5000',userName,'Test5000')).
+assert(db2('Test5000',password,'$pbkdf2-sha512$t=131072$SOmu6cp/hT2HQ6jUhMjzCg$4BgWLPqs0OHawMMRBUiEje4LbCGL4PJk7HJ7bIN34pZ1Hg0d14jYRBey23gi7lywLqVUTH7mXZABkOo9Z+Qqew')).
