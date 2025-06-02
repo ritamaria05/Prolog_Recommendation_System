@@ -949,7 +949,6 @@ get_movie_title(MovieID, Title) :-
   db(MovieID, name, Title), !.
 get_movie_title(_, 'Unknown Title').
 
-%% Show Ratings Page: styled like show_films_page
 show_ratings_page(_Request) :-
     (   http_session_data(user(User))
     ->  true
@@ -1327,19 +1326,27 @@ film_rating_items([rating(User, _, Stars, Review, DT)|Rest]) -->
 %% and injects the add_link//1 into the <li>.
 film_list_items([]) --> [].
 film_list_items([Name|T]) -->
-      {
-      db(Id, name, Name),
-      db(Id, year, Year),
-      LiStyle = 'margin-bottom:16px; list-style:none; font-family:"Copperplate",sans-serif;',
-      format(atom(DetailHref), '/film?film_id=~w', [Id]),
-      format(atom(YearStr),    "(~w)", [Year])
-    },
-    html(li([ style(LiStyle) ], [
-      a([ href(DetailHref) ], b(Name)),  % now goes to your Film Page
-      span([], ' '),
-      span([], YearStr)
-    ])),
-    film_list_items(T).
+  {
+    db(Id, name, Name),
+    ( db(Id, year, Year) -> format(string(YearStr), " (~w)", [Year]) ; YearStr = "" ),
+    format(string(DetailHref), "/film?film_id=~w", [Id])
+  },
+  html(
+    p([
+      % Film title links to /film?film_id=… using same Copperplate styling
+      a([
+          href(DetailHref),
+          style('font-family:"Copperplate",sans-serif;color:#222;text-decoration:none;'),
+          onmouseover("this.style.textDecoration='underline';"),
+          onmouseout("this.style.textDecoration='none';")
+        ],
+        b(Name)
+      ),
+      % Year in a <span>, immediately following the title
+      span(YearStr)
+    ])
+  ),
+  film_list_items(T).
 
 search_and_filter_form(Query, Year, Country, Genre, YearList, CountryList, GenreList) -->
     html(form([method(get), action('/allfilms')], [
