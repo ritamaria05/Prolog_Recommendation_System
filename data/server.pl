@@ -370,10 +370,15 @@ recommend_myfilms_page(_Request) :-
         ),
         % map to titles
         findall(Title,
-                ( member(_-FilmID, RecIDs),
-                  db(FilmID, name, Title) %lookup title in db/3 to place in list
-                ),
-                Titles), % put all titles in Titles list
+          (
+            member(X, RecIDs),
+            (   X = _-FilmID        % if it was produced by KNN, X is of the form Score-FilmID
+            ->  true
+            ;   X = FilmID          % if it was produced by Genre (or Popular, or Random), X is just FilmID
+            ),
+            db(FilmID, name, Title)
+          ),
+          Titles),
         % button styling
         BtnStyle = 'font-family:"Copperplate",sans-serif; font-size:17px; font-weight:300; color:#222; margin:10px; padding:4px 8px; background:#ddd; border:none; border-radius:4px; text-decoration:none; cursor:pointer;',
         HoverIn  = "this.style.background='#ccc';",
