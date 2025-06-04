@@ -80,3 +80,4 @@ assert(db2(admin,password,'$pbkdf2-sha512$t=131072$iB4l143gX2sydefmpCBKAQ$As2hvX
 assert(db2('Test5000',userName,'Test5000')).
 assert(db2('Test5000',password,'$pbkdf2-sha512$t=131072$SOmu6cp/hT2HQ6jUhMjzCg$4BgWLPqs0OHawMMRBUiEje4LbCGL4PJk7HJ7bIN34pZ1Hg0d14jYRBey23gi7lywLqVUTH7mXZABkOo9Z+Qqew')).
 assert(db2('Max',film,tt5594444)).
+assert(db2('Max',film,tt0478087)).
