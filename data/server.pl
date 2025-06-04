@@ -344,7 +344,7 @@ recommendation_page(_Request) :-
           ], 'Return Home'))
     ]).
 
-% recommendation based on my film list, using the hybrid recommender
+% recommendation based on your film list, using the hybrid recommender
 recommend_myfilms_page(_Request) :-
     % ensure user logged in
     (   http_session_data(user(UserID))
@@ -950,7 +950,7 @@ show_ratings_page(_Request) :-
     ),
     (   User == none
     ->  reply_html_page(
-            title('My Ratings - Login Required'),
+            title('Your Ratings - Login Required'),
             [ \current_user_info,
               script([], 'alert("Please login first"); window.location.href = "/login";')
             ])
@@ -977,19 +977,19 @@ show_ratings_page(_Request) :-
           h1('Your Ratings'),
           div([class('ratings-list')], Block),
 
-          % Return Home button
-          p(a([ href('/'),
-                 style(BtnStyle),
-                 onmouseover(HoverIn),
-                 onmouseout(HoverOut)
-               ], 'Return Home')),
-
           % See Your Films button
           p(a([ href('/showfilms'),
                  style(BtnStyle),
                  onmouseover(HoverIn),
                  onmouseout(HoverOut)
-               ], 'See Your Films'))
+               ], 'See Your Films')),
+
+          % Return Home button
+          p(a([ href('/'),
+                 style(BtnStyle),
+                 onmouseover(HoverIn),
+                 onmouseout(HoverOut)
+               ], 'Return Home'))
         ])
     ).
 
@@ -1216,7 +1216,7 @@ film_page(Request) :-
                      text-decoration:none;padding:4px 8px;'),
               onmouseover("this.style.background='#0056FF';"),
               onmouseout("this.style.background='#007BFF';")
-            ], 'Add to My Films'),
+            ], 'Add to Your Films'),
           a([ href(RateHref),
               style('font-family:"Copperplate",sans-serif;font-weight:bold;
                      background:#e67e22;color:#fff;border:none;
