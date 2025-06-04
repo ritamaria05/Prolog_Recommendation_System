@@ -70,7 +70,7 @@ d) **Random**
    - Chooses films randomly with rating >= 4
    - `random_good_movies/3`
 
-### Users
+### **Users**
 - **Register**: When a user registers for the first time, new user is added to usersdb.pl (users KB)
 
   - Password is encrypted before being added to KB
