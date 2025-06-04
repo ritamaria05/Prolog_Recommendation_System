@@ -17,14 +17,15 @@
 :- use_module(knn).
 :- use_module(tmdb_integration).
 :- ensure_loaded('tmdb_integration.pl'). % TMDb integration
-:- initialization(set_tmdb_api_key('bccc509894efa9e817a1152273191223')).
-:- use_module(rating).            % novo
+:- initialization(set_tmdb_api_key('bccc509894efa9e817a1152273191223')). %API key
+:- use_module(rating).
 :- initialization(init_ratings_db).
-% Static file handlers
+
+% static file handlers for CSS and images
 :- http_handler('/style.css', http_reply_file('style.css', []), []).
 :- http_handler('/mascote.jpg', http_reply_file('mascote.jpg', []), []).
 
-% HTTP Handlers
+% site page handlers
 :- http_handler(root(.), home_page, []).
 :- http_handler(root(register), register_page, []).
 :- http_handler(root(register_submit), register_submit, []).
@@ -46,15 +47,13 @@
 :- http_handler(root(removefilm_submit), remove_film_submit, []).
 :- http_handler(root(film), film_page, []).
 
-% —————————————————————————————
-% 1. Configure sua chave TMDb aqui
-% —————————————————————————————
+%API base
 tmdb_api_key('bccc509894efa9e817a1152273191223').
 tmdb_base_url("https://api.themoviedb.org/3").
 
-%%-----------------------------------------------------------------------
-%% layout: injects the stylesheet, user‐info bar, and center_box wrapper
-%%-----------------------------------------------------------------------
+%-----------------------------------------------------------------------
+% layout: injects the stylesheet, user‐info bar, and center_box wrapper
+%-----------------------------------------------------------------------
 :- html_meta page_wrapper(+, html).
 
 page_wrapper(Title, Body) :-
@@ -71,11 +70,11 @@ page_wrapper(Title, Body) :-
         ]).
 
 
-%% Server launch predicate.
+% server launch predicate.
 server(Port) :-
     http_server(http_dispatch, [port(Port)]).
 
-%% Helper DCG that inserts current user info with profile image.
+% helper DCG that inserts current user info with profile image.
 current_user_info -->
     {
         (   http_session_data(user(CurrUser))
@@ -88,7 +87,7 @@ current_user_info -->
         p(Display)
     ])).
 
-%% Home page with navigation links and current user info.
+%home page with navigation links and current user info.
 home_page(_Request) :-
     % build your button CSS as a single‐line atom (no backslash continuations!)
     BtnStyle = 'font-family: \"Copperplate\", sans-serif; font-size: 17px;
@@ -100,7 +99,7 @@ home_page(_Request) :-
 
     page_wrapper('Movie App Home', [
       h1('Welcome to Prolog, the Movie Recommender'),
-      p('Tears were shed making this :)'),
+      p('All of your movie needs, in one place! :)'),
       div([class(menu_container)], [
         p([class(menu_item)], a([ href('/register'),
                                   style(BtnStyle),
@@ -142,7 +141,7 @@ home_page(_Request) :-
 
 
 
-%% Registration Page: displays a form for new user registration.
+% registration page: displays a form for new user registration.
 register_page(_Request) :-
     % same button/link style as home_page
     BtnStyle = 'font-family: "Copperplate", sans-serif; font-size: 17px;
@@ -185,7 +184,7 @@ register_page(_Request) :-
           ], 'Return Home'))
     ]).
 
-%% Registration Form Handler: extracts parameters and calls new_user/2.
+%registration form handler: extracts parameters and calls new_user/2.
 register_submit(Request) :-
     http_parameters(Request,
         [ name(Name, []),
@@ -215,7 +214,7 @@ register_submit(Request) :-
             ], 'Return Home'))
     ]).
 
-%% Login Page: presents a login form.
+% login page: presents a login form.
 login_page(_Request) :-
     % shared button/link style
     BtnStyle = 'font-family: "Copperplate", sans-serif; font-size: 17px;
@@ -262,7 +261,7 @@ login_page(_Request) :-
     ]).
 
 
-%% Login Handler: extracts parameters, calls login/3, and shows the result.
+% login handler: extracts parameters, calls login/3, and shows the result.
 login_submit(Request) :-
     http_parameters(Request,
         [ name(Name, []),
@@ -293,7 +292,7 @@ login_submit(Request) :-
     ]).
 
 
-%% Logout Handler: logs out the user.
+% logout Handler: logs out the user.
 logout_handler(_Request) :-
     http_session_retractall(user(_)),
     page_wrapper('Logout', [
@@ -308,9 +307,9 @@ logout_handler(_Request) :-
     ]).
 
 
-%% Recommendation Page: shows to options of Recommendation system
-%% Get a Recommendation based on my Film List
-%% Get a Recommendation based on specific questions
+% Recommendation Page: shows two options of recommendation system
+% get a recommendation based on your film list
+% get a recommendation based on specific questions
 recommendation_page(_Request) :-
     % reuse the same button style + hover you’ve used elsewhere
     BtnStyle = 'font-family: "Copperplate", sans-serif;
@@ -329,7 +328,7 @@ recommendation_page(_Request) :-
              style(BtnStyle),
              onmouseover(HoverIn),
              onmouseout(HoverOut)
-           ], 'Based on Your Reviews')),
+           ], 'Based on Your Films')),
         p(a([
              href('/recommend_questions'),
              style(BtnStyle),
@@ -345,14 +344,14 @@ recommendation_page(_Request) :-
           ], 'Return Home'))
     ]).
 
-%% Recommendation based on my film list, using the hybrid recommender
+% recommendation based on my film list, using the hybrid recommender
 recommend_myfilms_page(_Request) :-
-    % 1. Ensure user is logged in
+    % ensure user logged in
     (   http_session_data(user(UserID))
     ->  true
     ;   UserID = none
     ),
-    % 2. Redirect if not logged in
+    % redirect if not logged in
     (   UserID == none
     ->  reply_html_page(
            title('Recommendation – Login Required'),
@@ -360,23 +359,23 @@ recommend_myfilms_page(_Request) :-
              script([], 'alert("Please login first"); window.location.href="/login";')
            ]
         )
-    ;   % 3. Compute hybrid recommendations
+    ;   % compute hybrid recommendations
         K = 10, N = 10,
         ( hybrid_recommend(UserID, K, N, RecIDs, Counts)
         -> true
         ;  RecIDs = [], Counts = _{knn:0,genre:0,popular:0,random:0}
         ),
-        % 4. Map to titles
+        % map to titles
         findall(Title,
                 ( member(_-FilmID, RecIDs),
                   db(FilmID, name, Title)
                 ),
                 Titles),
-        % 5. Button styling
+        % button styling
         BtnStyle = 'font-family:"Copperplate",sans-serif; font-size:17px; font-weight:300; color:#222; margin:10px; padding:4px 8px; background:#ddd; border:none; border-radius:4px; text-decoration:none; cursor:pointer;',
         HoverIn  = "this.style.background='#ccc';",
         HoverOut = "this.style.background='#ddd';",
-        % 6. Render page: one DCG call for list + styled button
+        % render page: one DCG call for list + styled button
         page_wrapper('Recommended Films', [
             h1('Recommended for you'),
             p([
@@ -396,7 +395,7 @@ recommend_myfilms_page(_Request) :-
         ])
     ).
 
-%% Helper DCG to either show links or fallback
+% Helper DCG to either show links or fallback
 render_recommendations([]) -->
     html([
       p('No recommendations available.'),
@@ -410,11 +409,11 @@ render_recommendations([]) -->
       ))
     ]).
 
-%% Show recommendations using same <p> style as showfilms_page
 render_recommendations(Titles) -->
     { Titles \= [] },  % only the non-empty case
     list_film_elements_rec(Titles).
 
+% get films infos
 list_film_elements_rec([]) --> [].
 list_film_elements_rec([Name|T]) -->
   {
@@ -424,11 +423,10 @@ list_film_elements_rec([Name|T]) -->
     -> format(string(YearStr), " (~w)", [Year])
     ;  YearStr = ""
     ),
-    % Build the link to our film_page/1
+    % build the link
     format(string(DetailLink), "/film?film_id=~w", [FilmId])
   },
   html(p([
-    % Film title now links to /film?film_id=…
     a([
         href(DetailLink),
         style('font-family:"Copperplate",sans-serif;color:#222;text-decoration:none;'),
@@ -441,8 +439,7 @@ list_film_elements_rec([Name|T]) -->
   ])),
   list_film_elements_rec(T).
 
-%% Recommendation based on specific questions (FORM)
-%% Recommendation questions form (no login required)
+% Recommendation based on specific questions (FORM - no login required)
 recommend_questions_form(_Request) :-
     page_wrapper('Recommendation by Questions', [
       h1('Movie Recommendations'),
@@ -477,9 +474,8 @@ recommend_questions_form(_Request) :-
            'Return Home'))
     ]).
 
-
     
-%% Recommendation based on specific questions (RESULT)
+% recommendation based on specific questions (RESULT)
 recommend_questions_result(Request) :-
     % Read answers & compute recommendations
     http_parameters(Request, [
@@ -493,7 +489,7 @@ recommend_questions_result(Request) :-
     findall(F, recommend(N1,N2,N3,N4,N5,F), Raw),
     sort(Raw, Films),
 
-    % Build the recommendations block
+    % build recommendations block
     ( Films = [] ->
         Block = [ p(style('font-family:"Copperplate",sans-serif;font-size:16px;color:#444;'),
                     'No matches found — try again with different answers.') ]
@@ -501,7 +497,7 @@ recommend_questions_result(Request) :-
                      \list_films(Films)) ]
     ),
 
-    % Button styling
+    % button styling
     BtnStyle = 'font-family:"Copperplate",sans-serif; font-size:17px; font-weight:300; color:#222; margin:10px; padding:4px 8px; background:#ddd; border:none; border-radius:4px; text-decoration:none; cursor:pointer;',
     HoverIn  = "this.style.background='#ccc';",
     HoverOut = "this.style.background='#ddd';",
@@ -520,9 +516,7 @@ recommend_questions_result(Request) :-
     ]).
 
 
-%% Auxiliar: lista de <li> para cada filme
-%% list_films(+Names)// 
-%% Renders: <li><b>Name</b> (Year) [Add]</li>
+%Auxiliar: lista de <li> para cada filme
 list_films([]) --> [].
 list_films([Title|T]) -->
   {
@@ -551,12 +545,12 @@ list_films([Title|T]) -->
   list_films(T).
 
 
-%% Helper: convert an atom to an integer, defaulting to Default on failure
+% Helper: convert an atom to an integer, defaulting to Default on failure
 atom_number_default(Default, Atom, Num) :-
     catch(atom_number(Atom, N), _, N = Default),
     Num = N.
 
-%% Gera um <p>label + <select> com as opções
+% gera um <p>label + <select> com as opções
 render_question(Id, Label, Options, Selected) -->
     {
       format(atom(Name), 'ans~w', [Id])
@@ -584,8 +578,8 @@ options_html([Text=Val|T], Sel) -->
 
 
 
-%% Add Film Page: if a user is logged in, shows the add-film form.
-%% Otherwise, sends a JavaScript pop-up alert and redirects to the login page.
+% Add Film Page: if a user is logged in, shows the add-film form
+% otherwise, sends a JavaScript pop-up alert and redirects to the login page.
 add_film_page(_Request) :-
     BtnStyle = 'font-family: "Copperplate", sans-serif;
                font-size: 17px; font-weight: 300; color: #222;
@@ -625,15 +619,15 @@ add_film_page(_Request) :-
 
 
 
-%% Add Film Handler: calls add_film_msg/2 with the provided film ID.
+% Add Film handling submit
 add_film_submit(Request) :-
     http_parameters(Request, [ film_id(FilmID, []) ]),
     add_film_msg(FilmID, Message),
-    % Define button style
+    % button style
     BtnStyle = 'font-family:"Copperplate",sans-serif; font-size:17px; font-weight:300; color:#222; margin:10px; padding:4px 8px; background:#ddd; border:none; border-radius:4px; text-decoration:none; cursor:pointer;',
     HoverIn  = "this.style.background='#ccc';",
     HoverOut = "this.style.background='#ddd';",
-    % Render the page with styled buttons
+    % render page with styled buttons
     page_wrapper('Add Film Result', [
         h1('Add Film'),
         p(Message),
@@ -648,7 +642,7 @@ add_film_submit(Request) :-
             style(BtnStyle),
             onmouseover(HoverIn),
             onmouseout(HoverOut)
-        ], 'See My Films')),
+        ], 'See Your Films')),
         p(a([
             href('/allfilms'),
             style(BtnStyle),
@@ -659,8 +653,8 @@ add_film_submit(Request) :-
 
 
 
-%% Remove Film Page: If a user is logged in, displays a form to remove a film.
-%% Otherwise, sends a JavaScript alert and redirects to login.
+% Remove Film Page: If a user is logged in, displays a form to remove a film
+% otherwise, sends a JavaScript alert and redirects to login.
 remove_film_page(_Request) :-
     BtnStyle = 'font-family: "Copperplate", sans-serif;
                font-size: 17px; font-weight: 300; color: #222;
@@ -699,15 +693,15 @@ remove_film_page(_Request) :-
     ).
 
 
-%% Remove Film Handler: processes film removal requests.
+% Remove Film Handler: processes film removal requests
 remove_film_submit(Request) :-
     http_parameters(Request, [ film_id(FilmID, []) ]),
     remove_film_msg(FilmID, Message),
-    % Define button style
+    % button style
     BtnStyle = 'font-family:"Copperplate",sans-serif; font-size:17px; font-weight:300; color:#222; margin:10px; padding:4px 8px; background:#ddd; border:none; border-radius:4px; text-decoration:none; cursor:pointer;',
     HoverIn  = "this.style.background='#ccc';",
     HoverOut = "this.style.background='#ddd';",
-    % Render the page with styled buttons
+    % render page with styled buttons
     page_wrapper('Remove Film Result', [
         h1('Remove Film'),
         p(Message),
@@ -722,13 +716,13 @@ remove_film_submit(Request) :-
             style(BtnStyle),
             onmouseover(HoverIn),
             onmouseout(HoverOut)
-        ], 'See My Films'))
+        ], 'See Your Films'))
     ]).
 
 
 
-%% Show Films Page: shows the list of films for the currently logged in user.
-%% If no user is logged in, it shows a pop-up and redirects to the login page.
+% show films page: shows the list of films for the currently logged in user
+% if no user is logged in, it shows a pop-up and redirects to the login page.
 show_films_page(_Request) :-
     (   http_session_data(user(UserID))
     ->  true
@@ -747,7 +741,7 @@ show_films_page(_Request) :-
                   db(FilmID, name, FilmName)
                 ),
                 FilmsRaw),
-        sort(FilmsRaw, Films),  % Remove duplicates and sort alphabetically
+        sort(FilmsRaw, Films),  % remove duplicates and sort alphabetically
         films_html(Films, FilmHtml),
         
         page_wrapper('Your Films', [
@@ -765,7 +759,7 @@ show_films_page(_Request) :-
     ).
 
 
-%% This DCG emits a “Remove” link iff there’s a logged‑in user.
+% This DCG emits a “Remove” link if there’s a logged in user.
 remove_link(FilmId) -->
     {
         http_session_data(user(_)),  % only if logged in
@@ -778,7 +772,7 @@ remove_link(FilmId) -->
           ], 'Remove')).
 remove_link(_) --> [].  % otherwise, emit nothing
 
-%% Rate link só se o user estiver em sessão.
+% Rate link só se o user estiver em sessão.
 rate_link(FilmId) -->
   {
       http_session_data(user(_)),                         % só se logged-in
@@ -795,25 +789,25 @@ rate_link(FilmId) -->
 rate_link(_) --> [].
 
 
-%% New helper that returns a chunk of HTML based on the list
+% new helper that returns a chunk of HTML based on the list
 films_html([], p('No films added.')).
 films_html(Films, \list_film_elements(Films)).
 
-%% Helper to render your films list with a Remove and rate link 
+% helper to render your films list with a Remove and rate link 
 list_film_elements([]) --> [].
 list_film_elements([Name|T]) -->
   {
-    % Look up ID and optional year
+    % look up ID and optional year
     db(FilmId, name, Name),
     ( db(FilmId, year, Year)
     -> format(string(YearStr), " (~w)", [Year])
     ;  YearStr = ""
     ),
-    % Build the link to our film_page/1
+    % build the link to our film_page/1
     format(string(DetailLink), "/film?film_id=~w", [FilmId])
   },
   html(p([
-    % Film title now links to /film?film_id=…
+    % film title now links to /film?film_id=…
     a([
         href(DetailLink),
         style('font-family:"Copperplate",sans-serif;color:#222;text-decoration:none;'),
@@ -829,7 +823,7 @@ list_film_elements([Name|T]) -->
   ])),
   list_film_elements(T).
 
-%% GET: mostra o formulário de rating
+% GET: mostra o formulário de rating
 rate_film_page(Request) :-
     http_session_data(user(_User)),
     http_parameters(Request, [ film_id(FilmId,[]) ]),
@@ -881,13 +875,13 @@ rate_film_page(Request) :-
             ]))
         ]),
 
-        % “See My Films” button
+        % “See Your Films” button
         p(a([
             href('/showfilms'),
             style(BtnStyle),
             onmouseover(HoverIn),
             onmouseout(HoverOut)
-          ], 'See My Films')),
+          ], 'See Your Films')),
 
         % “Return Home” button
         p(a([
@@ -899,7 +893,7 @@ rate_film_page(Request) :-
     ]).
 
 
-%% POST: recebe a avaliação e guarda
+% POST: recebe a avaliação e guarda
 rate_film_submit(Request) :-
     http_session_data(user(User)),
     http_parameters(Request, [
@@ -919,21 +913,21 @@ rate_film_submit(Request) :-
     page_wrapper('Rating submitted!', [
         h1('Rating submitted!'),
 
-        % “See My Films” button
+        % “See Your Films” button
         p(a([
             href('/showfilms'),
             style(BtnStyle),
             onmouseover(HoverIn),
             onmouseout(HoverOut)
-          ], 'See My Films')),
+          ], 'See Your Films')),
 
-        % “See My Ratings” button
+        % “See Your Ratings” button
         p(a([
             href('/myratings'),
             style(BtnStyle),
             onmouseover(HoverIn),
             onmouseout(HoverOut)
-          ], 'See My Ratings')),
+          ], 'See Your Ratings')),
 
         % “Return Home” button
         p(a([
@@ -990,12 +984,12 @@ show_ratings_page(_Request) :-
                  onmouseout(HoverOut)
                ], 'Return Home')),
 
-          % See My Films button
+          % See Your Films button
           p(a([ href('/showfilms'),
                  style(BtnStyle),
                  onmouseover(HoverIn),
                  onmouseout(HoverOut)
-               ], 'See My Films'))
+               ], 'See Your Films'))
         ])
     ).
 
@@ -1053,7 +1047,7 @@ filter_latest_ratings(Ratings, LatestRatings) :-
 rating_timestamp(rating(_, _, _, _, DateTime), Timestamp) :-
     date_time_stamp(DateTime, Timestamp).
 
-% Agrupa os ratings pelo MovieID
+% agrupa os ratings pelo MovieID
 group_by_movie(Ratings, Grouped) :-
   findall(MovieID, member(rating(_, MovieID, _, _, _), Ratings), MoviesDup),
   sort(MoviesDup, Movies),
@@ -1086,10 +1080,9 @@ most_recent_rating([R1, R2 | Rest], MostRecent) :-
 
 
 
-%% all_films_page(+Request)
-%% Displays all films with a title‐search box and (-) filters removed for brevity.
+% Displays all films with a title‐search box and filters
 all_films_page(Request) :-
-    % 1. Parse GET parameters
+    % Parse GET parameters
     http_parameters(Request, [
         q(QAtom, [optional(true), default(''), atom]),
         year(Year, [optional(true), default(''), atom]),
@@ -1098,7 +1091,7 @@ all_films_page(Request) :-
     ]),
     string_lower(QAtom, QLower),
 
-    % 2. Collect matching film names based on filters
+    % collect matching film names based on filters
     findall(Name,
         ( db(FilmId, name, Name),
           ( QLower == '' -> true
@@ -1111,18 +1104,18 @@ all_films_page(Request) :-
         RawNames),
     sort(RawNames, FilmNames),
 
-    % 3. Generate the dropdown for years in descending order
+    % enerate the dropdown for years in descending order
     findall(Y, db(_, year, Y), YearListRaw),
     sort(YearListRaw, YearList),
     reverse(YearList, YearListDesc),
 
-    % 4. Collect the country and genre options
+    % Collect the country and genre options
     findall(C, db(_, country, C), CountryListRaw),
     sort(CountryListRaw, CountryList),
     findall(G, db(_, genre, G), GenreListRaw),
     sort(GenreListRaw, GenreList),
 
-    % 5. Decide on result rendering
+    % result rendering
     ( FilmNames = []
     -> Results = [ \html(p('No films match those criteria.')) ]
     ;  Results = [ \html(
@@ -1131,7 +1124,7 @@ all_films_page(Request) :-
        ]
     ),
 
-    % 6. Build full page with styled “Return Home”
+    % Build full page with styled “Return Home”
     page_wrapper('All Films in Database', [
         h1('Browse All Films'),
         \search_and_filter_form(QLower, Year, Country, Genre,
@@ -1145,46 +1138,45 @@ all_films_page(Request) :-
              'Return Home'))
     ]).
 
-% —————————————————————————————
-% 2. Predicado para buscar detalhes (sinopse + elenco)
-% —————————————————————————————
-get_tmdb_details(MovieId, Overview, ActorsList) :-
-  tmdb_api_key(Key),
-  % Monta a URL: movie/{id}?append_to_response=credits
-  format(atom(URL),
-         'https://api.themoviedb.org/3/movie/~w?api_key=~w&language=en-US&append_to_response=credits',
-         [MovieId, Key]),
-  % Faz a requisição HTTP
-  setup_call_cleanup(
-      http_open(URL, In, [timeout(20)]),
-      json_read_dict(In, Dict),
-      close(In)
-  ),
-  % Extrai overview (sinopse)
-  (   get_dict(overview, Dict, Ov) 
-  ->  Overview = Ov
-  ;   Overview = 'Sinopse indisponível.'
-  ),
-  % Extrai elenco (cast): pega até 5 primeiros nomes
-  (   get_dict(credits, Dict, Credits),
+% predicado para buscar detalhes (sinopse + elenco)
+get_tmdb_details(MovieId, Overview, ActorsList, PosterURL) :-
+    tmdb_api_key(Key),
+    format(atom(URL),
+           'https://api.themoviedb.org/3/movie/~w?api_key=~w&language=en-US&append_to_response=credits',
+           [MovieId, Key]),
+    setup_call_cleanup(
+        http_open(URL, In, [timeout(20)]),
+        json_read_dict(In, Dict),
+        close(In)
+    ),
+
+    %overview
+    ( get_dict(overview, Dict, Ov) -> Overview = Ov ; Overview = 'No Synopsis Available.' ),
+
+    % actors
+    ( get_dict(credits, Dict, Credits),
       get_dict(cast, Credits, CastList0)
-  ->  findall(Name,
-              ( nth1(I, CastList0, C), I =< 5,
-                get_dict(name, C, Name)
-              ),
-              ActorsList)
-  ;   ActorsList = []
-  ).
+    ->  findall(Name,
+                ( nth1(I, CastList0, C), I =< 5,
+                  get_dict(name, C, Name)
+                ),
+                ActorsList)
+    ;   ActorsList = []
+    ),
 
+    % poster path
+    ( get_dict(poster_path, Dict, Path)
+    -> atom_concat('https://image.tmdb.org/t/p/w500', Path, PosterURL)
+    ;  PosterURL = ''  % fallback if no poster
+    ).
 
-%% ----------------------------------------------------------------------------
-%% Film Page: shows details for the given film_id
-%% URL: /film?film_id=tt1234567
-%% ----------------------------------------------------------------------------
+%----------------------------------------------------------------------------
+% Film Page: shows details for the given film_id
+%----------------------------------------------------------------------------
 film_page(Request) :-
     http_parameters(Request, [ film_id(FilmId, [atom]) ]),
 
-    % 1. Lookup base fields
+    % base
     ( db(FilmId, name,    Name)    -> true ; Name    = 'Unknown' ),
     ( db(FilmId, year,    Year)    -> true ; Year    = 'Unknown' ),
     ( db(FilmId, country, Country) -> true ; Country = 'Unknown' ),
@@ -1192,33 +1184,31 @@ film_page(Request) :-
     findall(G, db(FilmId, genre, G), Genres),
     ( db(FilmId, rating,  Rating) -> true ; Rating  = 'Unrated' ),
 
-    % 2. Genre formatting
+    %genre formatting
     ( Genres = [] ->
-        GenresEl = p([b('Genres: '), 'None listed'])
-    ; atomic_list_concat(Genres, ', ', GS),
-      GenresEl = p([b('Genres: '), span(GS)])
+        GenresHTML = 'None listed'
+    ; atomic_list_concat(Genres, ', ', GenresHTML)
     ),
 
-    % 3. TMDb integration: plot + cast
-    get_tmdb_details(FilmId, Overview, ActorsList),
-    PlotEl   = p([b('Synopsis: '), span(Overview)]),
+    % TMDb details
+    get_tmdb_details(FilmId, Overview, ActorsList, PosterURL),
     atomic_list_concat(ActorsList, ', ', ActorsStr),
-    ActorsEl = p([b('Cast: '), span(ActorsStr)]),
-
-    % 4. IMDb link
     format(atom(IMDbUrl), 'https://www.imdb.com/title/~w/', [FilmId]),
-    IMDbLink = p([
-      b('IMDb: '),
-      a([ href(IMDbUrl), target('_blank'),
-          style('font-family: "Copperplate", sans-serif; color: #1a0dab; text-decoration:underline;')
-        ], IMDbUrl)
-    ]),
 
-    % 5. Add/Rate buttons (only if logged in)
+    % poster (if possible)
+    ( PosterURL \== ''
+    -> PosterEl = img([
+           src(PosterURL),
+           style('max-width:250px; border-radius:8px; box-shadow:0 2px 10px rgba(0,0,0,0.2);margin-left:40px;')
+       ])
+    ;  PosterEl = div([], [])
+    ),
+
+    % Add/Rate buttons (if logged in)
     ( http_session_data(user(_)) ->
         format(atom(AddHref), '/addfilm_submit?film_id=~w', [FilmId]),
         format(atom(RateHref), '/ratefilm?film_id=~w', [FilmId]),
-        ButtonsList = [ p([
+        Buttons = [
           a([ href(AddHref),
               style('font-family:"Copperplate",sans-serif;font-weight:bold;
                      margin-right:10px;background:#007BFF;color:#fff;
@@ -1234,72 +1224,61 @@ film_page(Request) :-
               onmouseover("this.style.background='#d35400';"),
               onmouseout("this.style.background='#e67e22';")
             ], 'Rate')
-        ]) ]
-    ; ButtonsList = []
+        ]
+    ; Buttons = []
     ),
 
-    % 6. Gather all user reviews for this film
+    % Ratings block
     findall(rating(User, FilmId, Stars, Review, TS),
             rating(User, FilmId, Stars, Review, TS),
             RatingsForFilm),
 
     ( RatingsForFilm == []
-    -> ReviewsBlock = [h2([style('font-family:"Copperplate",sans-serif;margin-top:40px;padding-bottom:10px;border-bottom:1px solid #ccc;')], 'User Reviews'),
+    -> ReviewsBlock = [h2([style('font-family:"Copperplate",sans-serif;margin-top:40px;padding-bottom:10px;border-bottom:1px solid #ccc;font-weight:bold;')], 'User Reviews'),
                        p(style('font-family:"Copperplate",sans-serif;font-size:16px;color:#444;padding-bottom:15px;border-bottom:1px solid #ccc;'),
                           'No reviews added yet.') ]
     ; ReviewsBlock = [
-        h2([style('font-family:"Copperplate",sans-serif;margin-top:40px;padding-bottom:10px;border-bottom:1px solid #ccc;')], 'User Reviews'),
+        h2([style('font-family:"Copperplate",sans-serif;margin-top:40px;padding-bottom:10px;border-bottom:1px solid #ccc;font-weight:bold;')], 'User Reviews'),
         ul([ style('list-style:none; margin:20px 0; padding:0; font-family:"Copperplate",sans-serif;') ],
            \film_rating_items(RatingsForFilm))
       ]),
 
-    % 7. Assemble body
-    Core = [
-      h1(b(Name)),
-      p([b('Year: '),      span(Year)]),
-      p([b('Country: '),   span(Country)]),
-      p([b('Director: '),  span(Producer)]),
-      p([b('Rating: '),    span(Rating)]),
-      GenresEl,
-      PlotEl,
-      ActorsEl,
-      IMDbLink
-    ],
-
-    append(Core, ButtonsList, WithButtons),
-    append(WithButtons, ReviewsBlock, WithReviews),
-
-    append(WithReviews, [
-      p(a([ href('/showfilms'),
-             style('font-family: "Copperplate", sans-serif; font-size:17px;
-                    font-weight:300; color:#222; margin:10px; padding:4px 8px;
-                    background:#ddd; border:none; border-radius:4px;
-                    text-decoration:none; cursor:pointer;'),
+    % final HTML body
+    page_wrapper(['Film: ', Name], [
+      h1([style('text-align:center; font-family:"Copperplate",sans-serif; ')], Name),
+      div([style('display:flex; align-items:flex-start; gap:50px; margin-top:30px; flex-wrap:wrap; max-width:100%;')], [
+        PosterEl,
+        div([style('font-family:"Copperplate",sans-serif; text-align:left; max-width:600px; min-width:250px; flex:1;margin-left:20px;')], [
+          p([b('Year: '), Year]),
+          p([b('Country: '), Country]),
+          p([b('Director: '), Producer]),
+          p([b('Rating: '), Rating]),
+          p([b('Genres: '), GenresHTML]),
+          p([b('Synopsis: '), span(Overview)]),
+          p([b('Cast: '), span(ActorsStr)]),
+          div([], [
+            a([ href(IMDbUrl),
+                target('_blank'),
+                style('font-family:"Copperplate",sans-serif;font-weight:bold;
+                      background:#f1c40f;color:#222;border:none;
+                      border-radius:4px;cursor:pointer;text-decoration:none;
+                      padding:4px 8px; margin-bottom:15px; display:inline-block;'),
+                onmouseover("this.style.background='#d4ac0d';"),
+                onmouseout("this.style.background='#f1c40f';")
+              ], 'IMDb')
+          ]),
+          div([], Buttons)
+        ])
+      ]),
+      div([], ReviewsBlock),
+      p(a([ href('/'), style('font-family: "Copperplate", sans-serif; font-size: 17px; font-weight: 300; color: #222; margin:30px 10px 10px; padding:4px 8px; background:#ddd; border:none; border-radius:4px; text-decoration:none; cursor:pointer;'),
              onmouseover("this.style.background='#ccc';"),
-             onmouseout("this.style.background='#ddd';")
-           ], 'Show Your Films')),
-      p(a([ href('/allfilms'),
-             style('font-family: "Copperplate", sans-serif; font-size:17px;
-                    font-weight:300; color:#222; margin:10px; padding:4px 8px;
-                    background:#ddd; border:none; border-radius:4px;
-                    text-decoration:none; cursor:pointer;'),
-             onmouseover("this.style.background='#ccc';"),
-             onmouseout("this.style.background='#ddd';")
-           ], 'Show All Films')),
-      p(a([ href('/'),
-             style('font-family: "Copperplate", sans-serif; font-size:17px;
-                    font-weight:300; color:#222; margin:10px; padding:4px 8px;
-                    background:#ddd; border:none; border-radius:4px;
-                    text-decoration:none; cursor:pointer;'),
-             onmouseover("this.style.background='#ccc';"),
-             onmouseout("this.style.background='#ddd';")
-           ], 'Return Home'))
-    ], FullBody),
+             onmouseout("this.style.background='#ddd';") ],
+           'Return Home'))
+    ]).
 
-    % 8. Render
-    page_wrapper(['Film: ', Name], FullBody).
 
-%% DCG to render each rating
+% DCG to render each rating
 film_rating_items([]) --> [].
 film_rating_items([rating(User, _, Stars, Review, DT)|Rest]) -->
   {
@@ -1321,9 +1300,7 @@ film_rating_items([rating(User, _, Stars, Review, DT)|Rest]) -->
   film_rating_items(Rest).
 
 
-%% film_list_items(+Names)// 
-%% Renders each film as “Name (Year) - Rating [Add]” with spacing,
-%% and injects the add_link//1 into the <li>.
+% Renders each film
 film_list_items([]) --> [].
 film_list_items([Name|T]) -->
   {
@@ -1333,7 +1310,6 @@ film_list_items([Name|T]) -->
   },
   html(
     p([
-      % Film title links to /film?film_id=… using same Copperplate styling
       a([
           href(DetailHref),
           style('font-family:"Copperplate",sans-serif;color:#222;text-decoration:none;'),
@@ -1342,7 +1318,6 @@ film_list_items([Name|T]) -->
         ],
         b(Name)
       ),
-      % Year in a <span>, immediately following the title
       span(YearStr)
     ])
   ),
@@ -1381,7 +1356,7 @@ search_and_filter_form(Query, Year, Country, Genre, YearList, CountryList, Genre
 
 
 
-%% Render options with current selected
+% render options with current selected
 select_options([], _) --> [].
 select_options([H|T], Selected) -->
     {
@@ -1402,9 +1377,7 @@ select_options([H|T], Selected) -->
 
 
 /*
-To run the server, load this file into SWI-Prolog and run:
-
-    ?- server(8080).
-
-Then open your browser at http://localhost:8080/ to interact with your Movie App.
+To run the server, load  file into SWI-Prolog and run:
+  ?- server(8080).
+Then open a browser tab at http://localhost:8080/ to use site.
 */

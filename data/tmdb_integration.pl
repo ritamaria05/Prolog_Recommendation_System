@@ -14,14 +14,12 @@
     film_actor/2,
     film_director/2.
 
-%% set_tmdb_api_key(+Key)
-%% Store your TMDb API key.
+% store your TMDb API key.
 set_tmdb_api_key(Key) :-
     retractall(tmdb_api_key(_)),
     assertz(tmdb_api_key(Key)).
 
-%% load_all_user_films_metadata(+UserID)
-%% Fetch and cache TMDb metadata for each film the user has added.
+% fetch and cache TMDb metadata for each film the user has added.
 load_all_user_films_metadata(UserID) :-
     (   tmdb_api_key(_) -> true
     ;   throw(error(api_key_not_set, _))
@@ -34,8 +32,7 @@ load_all_user_films_metadata(UserID) :-
     forall(member(Name-LocalID, Pairs),
            load_film_metadata(Name, LocalID)).
 
-%% load_film_metadata(+FilmName, +LocalID)
-%% Look up the TMDb ID and then fetch details & credits.
+% look up the TMDb ID and then fetch details & credits.
 load_film_metadata(_FilmName, LocalID) :-
     tmdb_search_movie(LocalID, TMDBID),
     assertz(film_tmdb_id(LocalID, TMDBID)),
@@ -45,8 +42,7 @@ load_film_metadata(_FilmName, LocalID) :-
     forall(member(A, Actors),   assertz(film_actor(LocalID, A))),
     forall(member(D, Directors), assertz(film_director(LocalID, D))).
 
-%% tmdb_search_movie(+LocalID, -TMDBID)
-%% Uses the local film title to find the TMDb movie ID.
+% uses the local film title to find the TMDb movie ID.
 tmdb_search_movie(LocalID, TMDBID) :-
     db(LocalID, name, Query),
     tmdb_api_key(Key),
@@ -61,8 +57,7 @@ tmdb_search_movie(LocalID, TMDBID) :-
     ;   throw(error(movie_not_found(Query), _))
     ).
 
-%% tmdb_fetch_details(+TMDBID, -Genres)
-%% Pulls the list of genre names.
+%Pulls the list of genre names.
 tmdb_fetch_details(ID, Genres) :-
     tmdb_api_key(Key),
     format(atom(URL),
@@ -75,8 +70,7 @@ tmdb_fetch_details(ID, Genres) :-
 
 
 
-%% tmdb_fetch_credits(+TMDBID, -Actors, -Directors)
-%% Grabs up to 5 cast members and all directors.
+%Grabs up to 5 cast members and all directors.
 tmdb_fetch_credits(ID, Actors, Directors) :-
     tmdb_api_key(Key),
     format(atom(URL),

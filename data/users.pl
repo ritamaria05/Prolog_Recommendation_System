@@ -68,8 +68,7 @@ add_film(FilmID) :-
     add_film_msg(FilmID, Message),
     writeln(Message).
 
-%% add_film_msg(+FilmID, -Message)
-%% Adds a film for the current user and returns a status message.
+% add a film for the current user and return a status message.
 add_film_msg(FilmID, Message) :-
     get_current_user(UserID),
     (   UserID == none
@@ -81,10 +80,8 @@ add_film_msg(FilmID, Message) :-
         )
     ).
 
-
-%% get_current_user(-UserID)
-%% Tries to retrieve the current user from the HTTP session.  
-%% If that predicate isn’t available or fails, it falls back to nb_getval/2.
+% Tries to retrieve the current user from the HTTP session.  
+%if that predicate isn’t available or fails, it falls back to nb_getval/2.
 get_current_user(UserID) :-
     (   current_predicate(http_session_data/1)
     ->  (   http_session_data(user(UserID)) 
@@ -93,8 +90,7 @@ get_current_user(UserID) :-
     ;   nb_getval(current_user, UserID)
     ).
 
-%% remove_film_msg(+FilmID, -Message)
-%% Attempts to remove FilmID for the current user and returns a message.
+%attempts to remove FilmID for the current user and returns a message.
 remove_film_msg(FilmID, Message) :-
     get_current_user(UserID),
     (   UserID == none
@@ -125,7 +121,4 @@ show_films :-
         ;   forall(member(Film, Films), writeln(Film))
         )
     ).
-
-
-
 
