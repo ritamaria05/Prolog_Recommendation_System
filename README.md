@@ -81,8 +81,54 @@ d) **Random**
 - **Explore**: Each User can discover new films, and see relevant information about each film. 
 - **Logout**: Logout from account.
 
-### Server
+### Server (Site)
+Each page on the site has the currently logged in user stated in the top left and a logo in the top right. The logo on the top right links the user back to the home page when clicked.
 
-Completar...
+#### **Home Page**
+The home page displays a heading "Welcome to Prolog, the Movie Recommender" and subtitle "All of your movie needs, in one place! :)" and has buttons for the following:
+- `Register`
+- `Login`
+- `Get Recommendations`
+- `Show Your Films`
+- `Show Your Ratings`
+- `Show All Films`
+- `Logout`
 
+#### **Register**
+Page allows the user to create an account by providing a username and password. The username has to be one that does not already exist in the database.
 
+#### **Login**
+Allows the user to login to their account with their username-password credentials.
+
+#### **Get Recommendations**
+Opens a menu page with the following recommendation options:
+- `Based on Your Films`: User must be logged in to work. Generates a list of recommedations based on the user's ratings made and other similar highly rated films.
+- `By Specific Questions`: Opens a page with the following questions and generates recommendations based on the answers (if provided):
+  - Do you prefer older movies (pre-2000)?
+    - yes/no
+  - What types of movies are you in the mood for?
+    - Emotional/Historical/Cerebral/Adventurous/Funny
+  - Do you have time for longer movies?
+    - yes/no
+  - Which country's movie do you prefer?
+    - US/UK/Canada/Japan/Korea/China
+  - Do you prefer high-scoring movies?
+    - yes (unanswered is assumed as no preference)
+  - Options to show recommendations based on responses or return home 
+- `Return Home`
+
+#### **Show Your Films**
+Must be logged in to have access. Displays a list of the films the user has added to their account, with options remove or rate next to each 'title (year)' in the list.
+The user can click on the film's name to open the respective film page.
+
+#### **Show Your Ratings**
+Must be logged in to have access. Displays a list of all ratings made by the currently logged in user and an option to see your films or return home.
+
+#### **Show All Films**
+Shows a list of all the films in the database with filter options (year, country, genre), a field to search by the name of the film and buttons to apply the user-provided filters and reset the filters to default. At the bottom of the page there is an option to return home.
+
+#### **Film Pages**
+Page that displays a poster and detail for any film, as well as options to add to your films, rate or go to the official IMDB page. User-made ratings for the film are also listed on the film page along with an option to return home.
+
+#### **Logout**
+Ends the current user's session and stays on home page.
