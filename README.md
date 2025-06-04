@@ -104,15 +104,15 @@ Allows the user to login to their account with their username-password credentia
 Opens a menu page with the following recommendation options:
 - `Based on Your Films`: User must be logged in to work. Generates a list of recommedations based on the user's ratings made and other similar highly rated films.
 - `By Specific Questions`: Opens a page with the following questions and generates recommendations based on the answers (if provided):
-  - Do you prefer older movies (pre-2000)?
+  - `Do you prefer older movies (pre-2000)?`
     - yes/no
-  - What types of movies are you in the mood for?
+  - `What types of movies are you in the mood for?`
     - Emotional/Historical/Cerebral/Adventurous/Funny
-  - Do you have time for longer movies?
+  - `Do you have time for longer movies?`
     - yes/no
-  - Which country's movie do you prefer?
+  - `Which country's movie do you prefer?`
     - US/UK/Canada/Japan/Korea/China
-  - Do you prefer high-scoring movies?
+  - `Do you prefer high-scoring movies?`
     - yes (unanswered is assumed as no preference)
   - Options to show recommendations based on responses or return home 
 - `Return Home`
@@ -132,3 +132,6 @@ Page that displays a poster and detail for any film, as well as options to add t
 
 #### **Logout**
 Ends the current user's session and stays on home page.
+
+### API
+completar...
