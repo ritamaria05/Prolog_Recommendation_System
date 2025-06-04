@@ -1,4 +1,29 @@
 # Movie Recommendation System
+![Prolog](https://img.shields.io/badge/implementation-SWI--Prolog-lightgrey) 
+
+
+A Prolog-based movie recommendation system that lets you add and rate films, and receive personalized suggestions for what to watch next.
+
+## Repository Content
+
+```text
+Prolog_Recommendation_System/
+├── data/
+│   ├── gendb.pl
+│   ├── "imdb movies.csv"
+│   ├── knn.pl
+│   ├── mascote.png
+│   ├── movie.pl
+│   ├── rating.pl
+│   ├── ratinsdb.pl
+│   ├── recommend.pl
+│   ├── server.pl
+│   ├── style.css
+│   ├── tmdb_integration.pl
+│   ├── userdb.pl
+│   └── users.pl      
+└── README.md
+```
 
 ## How to Setup
 1. Download the folder  
@@ -12,6 +37,8 @@
 ### Building our Knowledge Base (KB)
 - **Source Data**: IMDB movies.csv  
 - **Parser**: gendb.pl converts CSV lines to Prolog facts in movies.pl
+
+--- 
 
 ### Recommendation Approaches
 
@@ -70,6 +97,8 @@ d) **Random**
    - Chooses films randomly with rating >= 4
    - `random_good_movies/3`
 
+---
+
 ### Users
 - **Register**: When a user registers for the first time, new user is added to usersdb.pl (users KB)
 
@@ -80,6 +109,8 @@ d) **Random**
 - **Ratings**: Each User can rate the films they have watched and write a review. (rating.pl, users.pl)
 - **Explore**: Each User can discover new films, and see relevant information about each film. 
 - **Logout**: Logout from account.
+
+---
 
 ### Server (Site)
 Each page on the site has the currently logged in user stated in the top left and a logo in the top right. The logo on the top right links the user back to the home page when clicked.
@@ -133,5 +164,16 @@ Page that displays a poster and detail for any film, as well as options to add t
 #### **Logout**
 Ends the current user's session and stays on home page.
 
+---
+
 ### API
 The system integrates real-world data through The Movie Database (TMDB) API. The API is used to fetch up-to-date information about movies, such as descriptions, genres, cast, directors and posters. It can be accessed at https://www.themoviedb.org.
+
+## Aditional Resources
+- https://www.freecodecamp.org/news/how-to-build-a-movie-recommendation-system-based-on-collaborative-filtering/
+
+## Authors
+Developed by Maximiliano Sá, Orlando Soares and Rita Moreira.
+
+## License
+This project is licensed under the [MIT License](LICENSE).
