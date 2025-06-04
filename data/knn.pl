@@ -1,7 +1,7 @@
 :- module(knn, [hybrid_recommend/5]).
 
 
-% item_vector(Item, Vector) — vetor com tuplos User-Score
+% para cada filme "Item" produz uma lista de tuplos User-Score
 item_vector(Item, Vector) :-
     findall(User-Score, rating(User, Item, Score, _, _), Vector).
 
@@ -14,10 +14,10 @@ cosine_similarity(Item1, Item2, Sim) :-
     norm(V2, N2),
     (N1 =:= 0.0 ; N2 =:= 0.0 -> Sim = 0 ; Sim is Dot / (N1 * N2)).
 
-% Produto escalar
+% Produto escalar 
 dot_product([], _, 0).
 dot_product([U1-S1|T1], V2, Result) :-
-    (   select(U1-S2, V2, RestV2)
+    (   select(U1-S2, V2, RestV2)     % select/3 procura U1-S2 em V2, remove-o e fica RestV2, else continua a recursão ; calcula S1*S2 + R se encontrar.
     ->  dot_product(T1, RestV2, R),
         Result is S1 * S2 + R
     ;   dot_product(T1, V2, Result)
@@ -31,8 +31,8 @@ norm([_-S|T], N) :-
 
 % Todos os itens diferentes de Item
 other_items(Item, Others) :-
-    setof(I, U^S^C^D^rating(U, I, S, C, D), All),
-    exclude(==(Item), All, Others).
+    setof(I, U^S^C^D^rating(U, I, S, C, D), All),   % U^S^C^D^ significa ignora essas variáveis (só queremos a variável I (filmes).
+    exclude(==(Item), All, Others).                 % exlcui da lista All todos os valores iguais a Item. Resultando na lista Others.
 
 % Lista de Similaridade-Item
 item_similarities(Item, List) :-
@@ -45,9 +45,9 @@ item_similarities(Item, List) :-
 % Top K mais parecidos
 top_k_similar_items(Item, K, TopK) :-
     item_similarities(Item, Sims),
-    sort(0, @>=, Sims, Sorted),
-    length(TopK, K),
-    append(TopK, _, Sorted).
+    sort(0, @>=, Sims, Sorted),            % ordena a lista dada pela função item_similarities/2 por ordem decrescente de similiaridade
+    length(TopK, K),                       % cria lista com K elementos unbounded
+    append(TopK, _, Sorted).               % devolve priemiros k elementos da lista sorted
 
 % Agrupa e tira média de similaridade de cada item
 aggregate_similarities(Sims, Aggregated) :-
@@ -62,7 +62,7 @@ aggregate_similarities(Sims, Aggregated) :-
 
 % Função para obter itens vistos pelo utilizador
 seen_items(User, Seen) :-
-    setof(Item, S^C^D^rating(User, Item, S, C, D), Seen).
+    setof(Item, S^C^D^rating(User, Item, S, C, D), Seen).              
 
 % Função para obter itens que o utilizador gostou (avaliados >= 4)
 liked_items(User, Liked) :-
