@@ -354,6 +354,7 @@ recommend_myfilms_page(_Request) :-
     ->  true
     ;   UserID = none
     ),
+    
     % redirect if not logged in
     (   UserID == none
     ->  reply_html_page(
@@ -362,7 +363,8 @@ recommend_myfilms_page(_Request) :-
              script([], 'alert("Please login first"); window.location.href="/login";')
            ]
         )
-    ;   % compute hybrid recommendations
+    ;   
+      % compute hybrid recommendations
         K = 10, N = 10,
         ( hybrid_recommend(UserID, K, N, RecIDs, Counts)
         -> true
@@ -372,17 +374,19 @@ recommend_myfilms_page(_Request) :-
         findall(Title,
           (
             member(X, RecIDs),
-            (   X = _-FilmID        % if it was produced by KNN, X is of the form Score-FilmID
+            (   X = _-FilmID % if it was produced by KNN, X is of the form Score-FilmID
             ->  true
-            ;   X = FilmID          % if it was produced by Genre (or Popular, or Random), X is just FilmID
+            ;   X = FilmID % if it was produced by Genre (or Popular, or Random), X is just FilmID
             ),
             db(FilmID, name, Title)
           ),
           Titles),
+
         % button styling
         BtnStyle = 'font-family:"Copperplate",sans-serif; font-size:17px; font-weight:300; color:#222; margin:10px; padding:4px 8px; background:#ddd; border:none; border-radius:4px; text-decoration:none; cursor:pointer;',
         HoverIn  = "this.style.background='#ccc';",
         HoverOut = "this.style.background='#ddd';",
+
         % render page: one DCG call for list + styled button
         page_wrapper('Recommended Films', [
             h1('Recommended for you'),
