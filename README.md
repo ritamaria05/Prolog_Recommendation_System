@@ -134,4 +134,4 @@ Page that displays a poster and detail for any film, as well as options to add t
 Ends the current user's session and stays on home page.
 
 ### API
-completar...
+The system integrates real-world data through The Movie Database (TMDB) API. The API is used to fetch up-to-date information about movies, such as descriptions, genres, cast, directors and posters. It can be accessed at https://www.themoviedb.org.
