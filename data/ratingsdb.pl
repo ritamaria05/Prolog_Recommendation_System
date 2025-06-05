@@ -26,3 +26,4 @@ rating(new12, tt0408060, 5, '1.2.3. "1" is best :D', date(2025, 5, 14, 23, 52, 2
 rating('Max', tt5594444, 3, 'personally I prefer fried chicken to fried zombies xD', date(2025, 6, 2, 12, 19, 20.324722051620483, -3600, 'GMT Summer Time', true)).
 rating('Max', tt0416449, 5, 'Awesome film! 5 stars!!!!', date(2025, 6, 4, 12, 22, 6.866175889968872, -3600, 'GMT Summer Time', true)).
 rating('Max', tt1431045, 5, 'great film', date(2025, 6, 4, 12, 59, 23.513829946517944, -3600, 'GMT Summer Time', true)).
+rating('Max', tt0468569, 4, 'Loved it!', date(2025, 6, 5, 11, 39, 3.51595401763916, -3600, 'GMT Summer Time', true)).

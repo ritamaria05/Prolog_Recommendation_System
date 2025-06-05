@@ -82,3 +82,8 @@ assert(db2('Test5000',password,'$pbkdf2-sha512$t=131072$SOmu6cp/hT2HQ6jUhMjzCg$4
 assert(db2('Max',film,tt5594444)).
 assert(db2('Max',film,tt0478087)).
 retractall(db2('Max',film,tt0816692),1).
+assert(db2('Max',film,tt0468569)).
+retractall(db2('Max',film,tt0468569),1).
+assert(db2('Max',film,tt0468569)).
+retractall(db2('Max',film,tt0468569),1).
+assert(db2('Max',film,tt0468569)).

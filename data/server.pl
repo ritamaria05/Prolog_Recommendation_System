@@ -643,12 +643,6 @@ add_film_submit(Request) :-
         h1('Add Film'),
         p(Message),
         p(a([
-            href('/'),
-            style(BtnStyle),
-            onmouseover(HoverIn),
-            onmouseout(HoverOut)
-        ], 'Return Home')),
-        p(a([
             href('/showfilms'),
             style(BtnStyle),
             onmouseover(HoverIn),
@@ -659,7 +653,13 @@ add_film_submit(Request) :-
             style(BtnStyle),
             onmouseover(HoverIn),
             onmouseout(HoverOut)
-        ], 'See All Films'))
+        ], 'See All Films')),
+        p(a([
+            href('/'),
+            style(BtnStyle),
+            onmouseover(HoverIn),
+            onmouseout(HoverOut)
+        ], 'Return Home'))
     ]).
 
 
@@ -716,17 +716,17 @@ remove_film_submit(Request) :-
         h1('Remove Film'),
         p(Message),
         p(a([
-            href('/'),
-            style(BtnStyle),
-            onmouseover(HoverIn),
-            onmouseout(HoverOut)
-        ], 'Return Home')),
-        p(a([
             href('/showfilms'),
             style(BtnStyle),
             onmouseover(HoverIn),
             onmouseout(HoverOut)
-        ], 'See Your Films'))
+        ], 'See Your Films')),
+        p(a([
+            href('/'),
+            style(BtnStyle),
+            onmouseover(HoverIn),
+            onmouseout(HoverOut)
+        ], 'Return Home'))
     ]).
 
 
