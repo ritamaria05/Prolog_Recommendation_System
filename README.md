@@ -32,6 +32,10 @@ Prolog_Recommendation_System/
 4. Query: `server(PORT).` (Replace PORT with your desired port, e.g., 8080)  
 5. Server will run at: `localhost:PORT`
 
+## System Requirements/Dependencies
+- OS: Windows/Linux/Mac
+- SWI-Prolog installed to system PATH (to function in terminal)
+
 ## System Architecture
 
 ### Building our Knowledge Base (KB)
