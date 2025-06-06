@@ -1,5 +1,6 @@
 :- use_module(library(persistency)).
 :- persistent(db(id:atom, property:atom, value:atom)).
+:- encoding(utf8).
 
 % generate film knowledge base from provided csv file
 % CSV file of IMDB information obtained here: 
